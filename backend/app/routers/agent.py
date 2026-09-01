@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends
 from typing import Dict, Any, List
 import aiosqlite
+import os
+import time
+import httpx
 from datetime import datetime, timezone
 
 from backend.app.core.database import get_db
+from backend.app.core.config import settings, BASE_DIR
 from backend.app.models.schemas import AgentChatRequest, AgentChatResponse, GatewayHealthResponse
 from backend.app.services.openclaw_client import openclaw_client
 
@@ -61,3 +65,38 @@ async def list_available_models() -> List[Dict[str, Any]]:
         {"id": "openrouter/inclusionai/ling-3.0-flash:free", "name": "InclusionAI Ling 3.0 Flash (Free)"},
         {"id": "openrouter/poolside/laguna-s-2.1:free", "name": "Poolside Laguna S 2.1 (Free)"}
     ]
+
+@router.get("/prompts")
+async def get_agent_prompts() -> Dict[str, str]:
+    config_dir = BASE_DIR.parent / "openclaw_config"
+    prompts = {}
+    files = ["SOUL.md", "AGENTS.md", "HEARTBEAT.md", "TOOLS.md"]
+    for filename in files:
+        file_path = config_dir / filename
+        if file_path.exists():
+            prompts[filename] = file_path.read_text(encoding="utf-8")
+        else:
+            prompts[filename] = ""
+    return prompts
+
+@router.get("/ping")
+async def ping_gateway() -> Dict[str, Any]:
+    start_time = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{settings.openclaw_gateway_url}/health")
+            latency_ms = int((time.time() - start_time) * 1000)
+            return {
+                "success": resp.status_code == 200,
+                "status_code": resp.status_code,
+                "latency_ms": latency_ms,
+                "url": settings.openclaw_gateway_url
+            }
+    except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        return {
+            "success": False,
+            "error": str(e),
+            "latency_ms": latency_ms,
+            "url": settings.openclaw_gateway_url
+        }

@@ -183,4 +183,23 @@ export const api = {
     if (!res.ok) throw new Error('Failed to send message to agent');
     return res.json();
   },
+
+  async getPrompts(): Promise<Record<string, string>> {
+    const res = await fetch(`${API_BASE}/agent/prompts`);
+    if (!res.ok) throw new Error('Failed to fetch agent prompts');
+    return res.json();
+  },
+
+  async pingGateway(): Promise<{
+    success: boolean;
+    status_code?: number;
+    latency_ms: number;
+    url: string;
+    error?: string;
+  }> {
+    const res = await fetch(`${API_BASE}/agent/ping`);
+    if (!res.ok) throw new Error('Failed to ping gateway');
+    return res.json();
+  },
 };
+
