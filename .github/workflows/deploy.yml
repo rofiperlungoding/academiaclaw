@@ -1,0 +1,70 @@
+name: AcademiaClaw CI/CD Auto-Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Run Backend Unit Tests
+        run: |
+          export PYTHONPATH=.
+          python backend/tests/test_fsrs.py
+          python backend/tests/test_lightrag.py
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend React App
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy-to-vps:
+    name: Deploy to IDwebhost VPS
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            if [ ! -d "/opt/academiaclaw/.git" ]; then
+              echo "Cloning repository for the first time..."
+              rm -rf /opt/academiaclaw
+              git clone https://github.com/${{ github.repository }}.git /opt/academiaclaw
+              chmod +x /opt/academiaclaw/scripts/*.sh
+              /opt/academiaclaw/scripts/setup_vps.sh
+            fi
+            chmod +x /opt/academiaclaw/scripts/*.sh
+            /opt/academiaclaw/scripts/deploy.sh
