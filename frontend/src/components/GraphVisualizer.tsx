@@ -221,12 +221,12 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ data, onSelect
   return (
     <div className="relative w-full h-full">
       <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-200 text-xs shadow-sm">
-        <Layers className="w-3.5 h-3.5 text-blue-500" />
+        <Layers className="w-3.5 h-3.5 text-brand-500" />
         <span className="text-slate-600 font-medium">Knowledge Graph</span>
         <span className="text-slate-300">|</span>
         <span className="text-emerald-600">{data.entities.length} Nodes</span>
         <span className="text-slate-300">&middot;</span>
-        <span className="text-blue-600">{data.relations.length} Edges</span>
+        <span className="text-brand-600">{data.relations.length} Edges</span>
       </div>
 
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-lg border border-slate-200 shadow-sm">

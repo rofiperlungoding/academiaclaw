@@ -26,8 +26,8 @@ export function AdminDashboardPage() {
   }, []);
 
   const metrics = [
-    { label: 'Dokumen Terindeks', value: docCount, icon: FileStack, color: 'text-blue-600 bg-blue-50 border-blue-100', route: '/admin/knowledge' },
-    { label: 'Total Flashcards FSRS-6', value: stats?.total_cards ?? 0, icon: Layers, color: 'text-indigo-600 bg-indigo-50 border-indigo-100', route: '/admin/flashcards' },
+    { label: 'Dokumen Terindeks', value: docCount, icon: FileStack, color: 'text-brand-600 bg-brand-50 border-brand-100', route: '/admin/knowledge' },
+    { label: 'Total Flashcards FSRS-6', value: stats?.total_cards ?? 0, icon: Layers, color: 'text-violet-600 bg-violet-50 border-violet-100', route: '/admin/flashcards' },
     { label: 'Agenda Tugas Kuliah', value: taskCount, icon: ListChecks, color: 'text-amber-600 bg-amber-50 border-amber-100', route: '/admin/tasks' },
     { label: 'Review Due Hari Ini', value: stats?.due_today ?? 0, icon: Sparkles, color: 'text-emerald-600 bg-emerald-50 border-emerald-100', route: '/admin/flashcards' },
   ];
@@ -38,7 +38,7 @@ export function AdminDashboardPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
             <span>Admin Management Center</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-50 text-brand-600 font-semibold border border-brand-100">
               IDwebhost AI Edition
             </span>
           </h1>
@@ -63,7 +63,7 @@ export function AdminDashboardPage() {
           <div
             key={i}
             onClick={() => navigate(m.route)}
-            className="bg-white border border-slate-200/90 rounded-2xl p-4 hover:shadow-card hover:border-slate-300 transition-all duration-200 cursor-pointer"
+            className="card-interactive p-4"
           >
             <div className="flex items-center justify-between mb-2.5">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${m.color}`}>
@@ -81,7 +81,7 @@ export function AdminDashboardPage() {
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
+              <ShieldCheck className="w-4 h-4 text-brand-600" />
               <span>Gateway Infrastructure</span>
             </h2>
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
@@ -123,10 +123,10 @@ export function AdminDashboardPage() {
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <Database className="w-4 h-4 text-indigo-600" />
+              <Database className="w-4 h-4 text-brand-600" />
               <span>FSRS-6 Memory Engine Breakdown</span>
             </h2>
-            <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 font-medium">
+            <span className="text-[10px] font-mono text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-100 font-medium">
               v6.0-FSRS
             </span>
           </div>
@@ -141,9 +141,9 @@ export function AdminDashboardPage() {
                 <p className="text-lg font-semibold text-amber-700">{stats.learning_cards}</p>
                 <p className="text-[10px] text-amber-600 font-medium">Learning</p>
               </div>
-              <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-100">
-                <p className="text-lg font-semibold text-blue-700">{stats.review_cards}</p>
-                <p className="text-[10px] text-blue-600 font-medium">Review</p>
+              <div className="bg-brand-50 p-2.5 rounded-xl border border-brand-100">
+                <p className="text-lg font-semibold text-brand-700">{stats.review_cards}</p>
+                <p className="text-[10px] text-brand-600 font-medium">Review</p>
               </div>
               <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
                 <p className="text-lg font-semibold text-emerald-700">

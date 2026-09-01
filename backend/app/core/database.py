@@ -111,3 +111,6 @@ async def init_db():
         """)
 
         await db.commit()
+    
+    from backend.app.core.seed import seed_data
+    await seed_data()

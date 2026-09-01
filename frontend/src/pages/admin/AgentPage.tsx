@@ -115,7 +115,7 @@ export function AgentPage() {
           <select
             value={contextMode}
             onChange={(e) => setContextMode(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-400 font-mono shadow-2xs"
+            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-brand-400 font-mono shadow-2xs"
           >
             <option value="academic_tutor">Mode: Academic Tutor</option>
             <option value="exam_crammer">Mode: Active Recall Crammer</option>
@@ -125,7 +125,7 @@ export function AgentPage() {
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-blue-400 font-mono shadow-2xs"
+            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-brand-400 font-mono shadow-2xs"
           >
             {models.map((m) => (
               <option key={m.id} value={m.id}>
@@ -150,7 +150,7 @@ export function AgentPage() {
             <Settings2 className="w-3.5 h-3.5 text-slate-400" />
             <span>session: admin_console</span>
             <span className="text-slate-300">|</span>
-            <span className="text-blue-600 font-semibold">{selectedModel.split('/').pop()}</span>
+            <span className="text-brand-600 font-semibold">{selectedModel.split('/').pop()}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -177,19 +177,19 @@ export function AgentPage() {
             return (
               <div key={msg.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
-                  isUser ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white'
+                  isUser ? 'bg-brand-600 text-white' : 'bg-slate-900 text-white'
                 }`}>
                   {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                 </div>
 
                 <div className={`max-w-[85%] px-4 py-3 rounded-xl leading-relaxed ${
                   isUser
-                    ? 'bg-blue-600 text-white rounded-tr-xs shadow-xs'
+                    ? 'bg-brand-600 text-white rounded-tr-xs shadow-xs'
                     : 'bg-white border border-slate-200/90 text-slate-800 rounded-tl-xs shadow-card whitespace-pre-wrap'
                 }`}>
                   <p>{msg.text}</p>
                   <div className={`flex items-center justify-between gap-4 mt-2 pt-1 border-t text-[10px] ${
-                    isUser ? 'border-blue-500 text-blue-200' : 'border-slate-100 text-slate-400'
+                    isUser ? 'border-brand-500 text-brand-200' : 'border-slate-100 text-slate-400'
                   }`}>
                     <span>{msg.model || (isUser ? 'client' : 'openclaw')}</span>
                     <span>{msg.timestamp}</span>
@@ -205,7 +205,7 @@ export function AgentPage() {
                 <Bot className="w-3.5 h-3.5" />
               </div>
               <div className="bg-white border border-slate-200/90 rounded-xl rounded-tl-xs px-4 py-3 shadow-card flex items-center gap-2 text-xs text-slate-500">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" />
                 <span>Streaming response from OpenClaw agent backend...</span>
               </div>
             </div>
@@ -221,7 +221,7 @@ export function AgentPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Kirim perintah atau query ke agent..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 font-mono"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50 font-mono"
             />
             <button
               type="submit"

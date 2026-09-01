@@ -119,7 +119,7 @@ export function TasksPage() {
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors shadow-sm shadow-brand-200"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Task</span>
@@ -157,7 +157,7 @@ export function TasksPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama tugas atau mata kuliah..."
-            className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+            className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
           />
         </div>
 
@@ -220,7 +220,7 @@ export function TasksPage() {
                   </div>
 
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded">
                       {task.course}
                     </span>
                     <span className="text-[11px] text-slate-400">
@@ -268,7 +268,7 @@ export function TasksPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Misal: Laporan Praktikum Op-Amp"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
                   required
                 />
               </div>
@@ -279,7 +279,7 @@ export function TasksPage() {
                   <select
                     value={taskType}
                     onChange={(e) => setTaskType(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400"
                   >
                     <option value="Tugas">Tugas</option>
                     <option value="Praktikum">Praktikum</option>
@@ -295,7 +295,7 @@ export function TasksPage() {
                     value={course}
                     onChange={(e) => setCourse(e.target.value)}
                     placeholder="ASD"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400"
                     required
                   />
                 </div>
@@ -305,7 +305,7 @@ export function TasksPage() {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400"
                   >
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
@@ -320,7 +320,7 @@ export function TasksPage() {
                   type="datetime-local"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400"
                   required
                 />
               </div>
@@ -332,7 +332,7 @@ export function TasksPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Catatan tambahan..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400"
                 />
               </div>
 
@@ -346,7 +346,7 @@ export function TasksPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-sm shadow-blue-200"
+                  className="px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 shadow-sm shadow-brand-200"
                 >
                   Simpan
                 </button>

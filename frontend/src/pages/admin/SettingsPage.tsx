@@ -55,7 +55,7 @@ export function SettingsPage() {
           disabled={pinging}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs"
         >
-          <Activity className="w-3.5 h-3.5 text-blue-600" />
+          <Activity className="w-3.5 h-3.5 text-brand-600" />
           <span>{pinging ? 'Testing Gateway...' : 'Ping Gateway'}</span>
         </button>
       </div>
@@ -86,7 +86,7 @@ export function SettingsPage() {
 
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-xs">
         <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-          <Server className="w-4 h-4 text-blue-600" />
+          <Server className="w-4 h-4 text-brand-600" />
           <span>OpenClaw Gateway Specifications</span>
         </h2>
 
@@ -147,7 +147,7 @@ export function SettingsPage() {
                 onClick={() => setSelectedPrompt(filename)}
                 className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
                   selectedPrompt === filename
-                    ? 'bg-white text-blue-700 shadow-2xs font-semibold'
+                    ? 'bg-white text-brand-700 shadow-2xs font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -179,7 +179,7 @@ export function SettingsPage() {
                 <p className="text-[10px] font-mono text-slate-400 mt-0.5">{m.id}</p>
               </div>
               {m.recommended && (
-                <span className="text-[10px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 font-mono">
+                <span className="text-[10px] font-medium text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-100 font-mono">
                   Default
                 </span>
               )}

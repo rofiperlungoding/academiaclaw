@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Brain, CalendarCheck, TrendingUp, ArrowRight, Clock, MessageSquare, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { RetentionStats, AcademicTask, HeartbeatSummary } from '../../types';
 import { api } from '../../api';
+import { useAuth } from '../../contexts/AuthContext';
+import { SkeletonStatRow, SkeletonList } from '../../components/LoadingSkeleton';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [stats, setStats] = useState<RetentionStats | null>(null);
   const [tasks, setTasks] = useState<AcademicTask[]>([]);
   const [heartbeat, setHeartbeat] = useState<HeartbeatSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.allSettled([
@@ -19,6 +23,7 @@ export function DashboardPage() {
       if (s.status === 'fulfilled') setStats(s.value);
       if (t.status === 'fulfilled') setTasks(t.value);
       if (h.status === 'fulfilled') setHeartbeat(h.value);
+      setLoading(false);
     });
   }, []);
 
@@ -29,38 +34,48 @@ export function DashboardPage() {
     return 'Selamat Malam';
   })();
 
+  const today = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
   const upcomingTasks = [...tasks]
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .slice(0, 4);
 
+  const firstName = user?.name?.split(' ')[0] || 'User';
+
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* ——— HEADER ——— */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              {greeting}, Rofi
+              {greeting}, {firstName}
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px] font-medium border border-blue-100">
-              Teknik Komputer · UB
+            <span className="badge-brand">
+              {user?.program || 'Teknik Komputer'} · {user?.faculty || 'UB'}
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Agenda belajar dan status retensi memori FSRS-6 Anda hari ini.
+            {today} — Agenda belajar dan status retensi memori FSRS-6.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/app/ask')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-xs"
+            className="btn-secondary text-xs px-3.5 py-2"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+            <MessageSquare className="w-3.5 h-3.5 text-brand-500" />
             <span>Tanya AI</span>
           </button>
           <button
             onClick={() => navigate('/app/schedule')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200"
+            className="btn-primary text-xs px-3.5 py-2"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Tugas</span>
@@ -68,129 +83,138 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <button
-          onClick={() => navigate('/app/review')}
-          className="group bg-white border border-slate-200/90 rounded-2xl p-5 text-left hover:shadow-card-hover hover:border-blue-200 transition-all duration-200 relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <Brain className="w-5 h-5 text-blue-500" />
+      {/* ——— STAT CARDS ——— */}
+      {loading ? (
+        <SkeletonStatRow />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            onClick={() => navigate('/app/review')}
+            className="card-interactive p-5 text-left group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                <Brain className="w-5 h-5 text-brand-500" />
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-brand-500 group-hover:translate-x-0.5 transition-all duration-200" />
             </div>
-            <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all duration-200" />
-          </div>
-          <p className="text-3xl font-semibold text-slate-900 tracking-tight">
-            {stats?.due_today ?? 0}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Kartu perlu diulang hari ini</p>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-blue-600">
-            <span>Mulai active recall</span>
-            <span>&rarr;</span>
-          </div>
-        </button>
+            <p className="text-3xl font-semibold text-slate-900 tracking-tight">
+              {stats?.due_today ?? 0}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Kartu perlu diulang hari ini</p>
+            <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-brand-600">
+              <span>Mulai active recall</span>
+              <span>&rarr;</span>
+            </div>
+          </button>
 
-        <button
-          onClick={() => navigate('/app/schedule')}
-          className="group bg-white border border-slate-200/90 rounded-2xl p-5 text-left hover:shadow-card-hover hover:border-amber-200 transition-all duration-200 relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-              <CalendarCheck className="w-5 h-5 text-amber-500" />
+          <button
+            onClick={() => navigate('/app/schedule')}
+            className="card-interactive p-5 text-left group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                <CalendarCheck className="w-5 h-5 text-amber-500" />
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all duration-200" />
             </div>
-            <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all duration-200" />
-          </div>
-          <p className="text-3xl font-semibold text-slate-900 tracking-tight">
-            {heartbeat?.urgent_tasks_count ?? tasks.length}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Tugas mendekati deadline</p>
-          <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-amber-600">
-            <span>Buka daftar agenda</span>
-            <span>&rarr;</span>
-          </div>
-        </button>
+            <p className="text-3xl font-semibold text-slate-900 tracking-tight">
+              {heartbeat?.urgent_tasks_count ?? tasks.length}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Tugas mendekati deadline</p>
+            <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-amber-600">
+              <span>Buka daftar agenda</span>
+              <span>&rarr;</span>
+            </div>
+          </button>
 
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-emerald-500" />
+          <div className="card p-5 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-100">
+                FSRS-6
+              </span>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">
-              FSRS-6
-            </span>
-          </div>
-          <p className="text-3xl font-semibold text-slate-900 tracking-tight">
-            {stats ? `${Math.round(stats.average_retrievability * 100)}%` : '--'}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Rata-rata retensi memori</p>
-          <div className="mt-3 text-[11px] text-slate-400">
-            Total {stats?.total_cards ?? 0} kartu terdaftar
+            <p className="text-3xl font-semibold text-slate-900 tracking-tight">
+              {stats ? `${Math.round(stats.average_retrievability * 100)}%` : '--'}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Rata-rata retensi memori</p>
+            <div className="mt-3 text-[11px] text-slate-400">
+              Total {stats?.total_cards ?? 0} kartu terdaftar
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {stats && stats.due_today > 0 ? (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 shadow-xs shadow-blue-200">
-                <Sparkles className="w-4.5 h-4.5 text-white" />
+      {/* ——— REVIEW CTA ——— */}
+      {!loading && (
+        stats && stats.due_today > 0 ? (
+          <div className="bg-gradient-to-r from-brand-50 to-violet-50 border border-brand-100 rounded-2xl p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 flex items-center justify-center shrink-0 shadow-glow-sm">
+                  <Sparkles className="w-4.5 h-4.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-brand-950">
+                    {stats.due_today} kartu flashcard siap untuk Active Recall hari ini
+                  </p>
+                  <p className="text-xs text-brand-700 mt-0.5">
+                    Algoritma FSRS-6 telah mengoptimalkan interval review untuk memperkuat stabilitas memori jangka panjang Anda.
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => navigate('/app/review')}
+                className="btn-primary text-xs px-4 py-2.5 shrink-0"
+              >
+                <Brain className="w-3.5 h-3.5" />
+                <span>Review Sekarang</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-blue-950">
-                  {stats.due_today} kartu flashcard siap untuk Active Recall hari ini
+                <p className="text-xs font-semibold text-emerald-900">
+                  Semua review flashcard hari ini sudah selesai
                 </p>
-                <p className="text-xs text-blue-700 mt-0.5">
-                  Algoritma FSRS-6 telah mengoptimalkan interval review untuk memperkuat stabilitas memori jangka panjang Anda.
+                <p className="text-[11px] text-emerald-700">
+                  Hebat! Retensi memori Anda dalam kondisi prima.
                 </p>
               </div>
             </div>
             <button
               onClick={() => navigate('/app/review')}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200 shrink-0 flex items-center justify-center gap-1.5"
+              className="text-xs font-medium text-emerald-700 hover:text-emerald-900 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 transition-colors"
             >
-              <Brain className="w-3.5 h-3.5" />
-              <span>Review Sekarang</span>
+              Review Bebas
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-emerald-900">
-                Semua review flashcard hari ini sudah selesai
-              </p>
-              <p className="text-[11px] text-emerald-700">
-                Hebat! Retensi memori Anda dalam kondisi prima.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/app/review')}
-            className="text-xs font-medium text-emerald-700 hover:text-emerald-900 px-3 py-1.5 rounded-lg bg-white border border-emerald-200"
-          >
-            Review Bebas
-          </button>
-        </div>
+        )
       )}
 
+      {/* ——— TASKS + RETENTION ——— */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900 tracking-tight">
-              Deadline Terdekat
-            </h2>
+            <h2 className="section-title">Deadline Terdekat</h2>
             <button
               onClick={() => navigate('/app/schedule')}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
             >
               Lihat Semua ({tasks.length})
             </button>
           </div>
 
-          {upcomingTasks.length === 0 ? (
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center">
+          {loading ? (
+            <SkeletonList rows={3} />
+          ) : upcomingTasks.length === 0 ? (
+            <div className="card p-8 text-center">
               <CalendarCheck className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-medium text-slate-700">Tidak ada deadline mendesak</p>
               <p className="text-xs text-slate-400 mt-1 mb-4">
@@ -198,7 +222,7 @@ export function DashboardPage() {
               </p>
               <button
                 onClick={() => navigate('/app/schedule')}
-                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors inline-flex items-center gap-1.5"
+                className="btn-ghost text-xs inline-flex"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Tambah Agenda</span>
@@ -215,7 +239,7 @@ export function DashboardPage() {
                   <div
                     key={task.id}
                     onClick={() => navigate('/app/schedule')}
-                    className={`animate-fade-in stagger-${i + 1} bg-white border border-slate-200/80 rounded-xl p-4 flex items-center justify-between hover:shadow-card hover:border-slate-300 transition-all duration-200 cursor-pointer`}
+                    className={`animate-fade-in stagger-${i + 1} card-interactive p-4 flex items-center justify-between`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -235,9 +259,9 @@ export function DashboardPage() {
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 shrink-0 ml-4">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
                       <span className={
-                        diffDays <= 1 ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md' :
-                        diffDays <= 3 ? 'text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-md' :
-                        'text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md'
+                        diffDays <= 1 ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md border border-red-100' :
+                        diffDays <= 3 ? 'text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100' :
+                        'text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60'
                       }>
                         {diffDays <= 0 ? 'Hari ini' : `${diffDays} hari lagi`}
                       </span>
@@ -249,12 +273,11 @@ export function DashboardPage() {
           )}
         </div>
 
+        {/* ——— RETENTION FORECAST ——— */}
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900 tracking-tight">
-            Proyeksi Retensi 7 Hari
-          </h2>
+          <h2 className="section-title">Proyeksi Retensi 7 Hari</h2>
 
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+          <div className="card p-5 shadow-xs">
             {stats?.retention_forecast_7d && stats.retention_forecast_7d.length > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-end gap-2 h-32 pt-4">
@@ -267,7 +290,7 @@ export function DashboardPage() {
                         </span>
                         <div className="w-full bg-slate-100 rounded-lg overflow-hidden relative" style={{ height: '90px' }}>
                           <div
-                            className="w-full bg-blue-500 rounded-lg transition-all duration-500 group-hover:bg-blue-600 absolute bottom-0"
+                            className="w-full bg-gradient-to-t from-brand-600 to-brand-400 rounded-lg transition-all duration-500 group-hover:from-brand-700 group-hover:to-brand-500 absolute bottom-0"
                             style={{ height: `${pct}%` }}
                           />
                         </div>
@@ -278,7 +301,7 @@ export function DashboardPage() {
                 </div>
                 <div className="border-t border-slate-100 pt-3 text-[11px] text-slate-400 flex items-center justify-between">
                   <span>Target Retensi: 90%</span>
-                  <span className="font-mono text-blue-600 font-medium">FSRS v6</span>
+                  <span className="font-mono text-brand-600 font-medium">FSRS v6</span>
                 </div>
               </div>
             ) : (

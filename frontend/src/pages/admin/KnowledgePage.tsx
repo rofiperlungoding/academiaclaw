@@ -102,7 +102,7 @@ export function KnowledgePage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
             <span>Knowledge Studio & LightRAG</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100 font-medium">
               Dual-Level Graph
             </span>
           </h1>
@@ -122,7 +122,7 @@ export function KnowledgePage() {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
-            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200"
+            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-medium transition-colors shadow-sm shadow-brand-200"
           >
             <Upload className="w-4 h-4" />
             <span>{uploading ? 'Mengekstrak Dokumen...' : 'Upload Materi Kuliah'}</span>
@@ -136,12 +136,12 @@ export function KnowledgePage() {
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
           isDragOver
-            ? 'border-blue-400 bg-blue-50/50'
+            ? 'border-brand-400 bg-brand-50/50'
             : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
         }`}
       >
         <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-          <Upload className="w-4 h-4 text-blue-500" />
+          <Upload className="w-4 h-4 text-brand-500" />
           <span>Drag and drop file PDF atau slide kuliah di sini untuk auto-ekstraksi LightRAG & Flashcard.</span>
         </div>
       </div>
@@ -155,7 +155,7 @@ export function KnowledgePage() {
             {selectedDocId && (
               <button
                 onClick={() => setSelectedDocId(null)}
-                className="text-[11px] text-blue-600 hover:underline"
+                className="text-[11px] text-brand-600 hover:underline"
               >
                 Reset Filter
               </button>
@@ -167,12 +167,12 @@ export function KnowledgePage() {
               onClick={() => setSelectedDocId(null)}
               className={`w-full text-left px-3.5 py-3 rounded-xl text-xs transition-all flex items-center justify-between ${
                 selectedDocId === null
-                  ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200 shadow-2xs'
+                  ? 'bg-brand-50 text-brand-900 font-semibold border border-brand-200 shadow-2xs'
                   : 'bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-500" />
+                <Layers className="w-4 h-4 text-brand-500" />
                 <span>Seluruh Graf Pengetahuan Global</span>
               </div>
               <span className="text-[10px] font-mono text-slate-400">All</span>
@@ -184,13 +184,13 @@ export function KnowledgePage() {
                 onClick={() => setSelectedDocId(doc.id)}
                 className={`p-3.5 rounded-xl text-xs transition-all cursor-pointer border ${
                   selectedDocId === doc.id
-                    ? 'bg-blue-50/70 text-blue-950 border-blue-200 shadow-xs'
+                    ? 'bg-brand-50/70 text-brand-950 border-brand-200 shadow-xs'
                     : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50 hover:border-slate-300'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 shrink-0 text-blue-500" />
+                    <FileText className="w-4 h-4 shrink-0 text-brand-500" />
                     <p className="font-medium truncate">{doc.title}</p>
                   </div>
                   <button
@@ -242,7 +242,7 @@ export function KnowledgePage() {
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <Search className="w-4 h-4 text-blue-600" />
+            <Search className="w-4 h-4 text-brand-600" />
             <span>Ask Dual-Level RAG Engine</span>
           </h3>
           <span className="text-[10px] font-mono text-slate-400">
@@ -256,12 +256,12 @@ export function KnowledgePage() {
             value={ragQuery}
             onChange={(e) => setRagQuery(e.target.value)}
             placeholder="Tanyakan konsep mendalam, perbandingan algoritma, atau relasi entitas..."
-            className="flex-1 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 shadow-xs"
+            className="flex-1 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50 shadow-xs"
           />
           <button
             type="submit"
             disabled={ragLoading || !ragQuery.trim()}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm shadow-blue-200 flex items-center gap-1.5 shrink-0"
+            className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm shadow-brand-200 flex items-center gap-1.5 shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{ragLoading ? 'Mencari di Graf...' : 'Query RAG'}</span>

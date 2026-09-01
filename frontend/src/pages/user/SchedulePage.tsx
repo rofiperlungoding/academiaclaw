@@ -108,7 +108,7 @@ export function SchedulePage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+          <h1 className="page-title">
             Jadwal & Deadline Kuliah
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -117,7 +117,7 @@ export function SchedulePage() {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200"
+          className="btn-primary text-xs px-4 py-2"
         >
           <Plus className="w-4 h-4" />
           <span>Tambah Agenda</span>
@@ -132,7 +132,7 @@ export function SchedulePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari tugas atau mata kuliah..."
-            className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+            className="input-field pl-9"
           />
         </div>
 
@@ -141,7 +141,7 @@ export function SchedulePage() {
           <select
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+            className="input-field w-auto"
           >
             <option value="all">Semua Mata Kuliah</option>
             {coursesList.map((c) => (
@@ -177,7 +177,7 @@ export function SchedulePage() {
                       className={`flex items-start sm:items-center gap-3.5 px-4 py-3.5 rounded-xl border transition-all duration-200 ${
                         isCompleted
                           ? 'bg-slate-50/80 border-slate-100 opacity-60'
-                          : 'bg-white border-slate-200/90 hover:shadow-card hover:border-slate-300'
+                          : 'card-interactive'
                       }`}
                     >
                       <button
@@ -206,7 +206,7 @@ export function SchedulePage() {
                         </div>
 
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                          <span className="text-[11px] font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">
                             {task.course}
                           </span>
                           <span className="text-[11px] text-slate-400">
@@ -251,7 +251,7 @@ export function SchedulePage() {
         })}
 
         {filteredTasks.length === 0 && (
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center">
+          <div className="card p-12 text-center">
             <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm font-medium text-slate-700">Tidak ada agenda ditemukan</p>
             <p className="text-xs text-slate-400 mt-1 mb-4">
@@ -259,7 +259,7 @@ export function SchedulePage() {
             </p>
             <button
               onClick={() => setShowAdd(true)}
-              className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5"
+              className="btn-primary text-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Agenda Baru</span>
@@ -289,7 +289,7 @@ export function SchedulePage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Praktikum AVL Tree & Graph ADT"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  className="input-field"
                   required
                 />
               </div>
@@ -301,7 +301,7 @@ export function SchedulePage() {
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
                   placeholder="Algoritma dan Struktur Data"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 mb-1.5"
+                  className="input-field mb-1.5"
                   required
                 />
                 <div className="flex flex-wrap gap-1">
@@ -324,7 +324,7 @@ export function SchedulePage() {
                   <select
                     value={taskType}
                     onChange={(e) => setTaskType(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="input-field"
                   >
                     <option value="Tugas">Tugas</option>
                     <option value="Praktikum">Praktikum</option>
@@ -339,7 +339,7 @@ export function SchedulePage() {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
                   >
                     <option value="high">Tinggi (High)</option>
                     <option value="medium">Sedang (Medium)</option>
@@ -354,7 +354,7 @@ export function SchedulePage() {
                   type="datetime-local"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  className="input-field"
                   required
                 />
               </div>
@@ -366,7 +366,7 @@ export function SchedulePage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Kriteria penilaian, format file, atau instruksi dosen..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                  className="input-field"
                 />
               </div>
 
@@ -374,13 +374,13 @@ export function SchedulePage() {
                 <button
                   type="button"
                   onClick={() => setShowAdd(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="btn-secondary text-xs"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+                  className="btn-primary text-xs"
                 >
                   Simpan Agenda
                 </button>

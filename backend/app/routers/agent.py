@@ -47,13 +47,15 @@ async def chat_with_agent(req: AgentChatRequest, db: aiosqlite.Connection = Depe
 @router.get("/gateway-status", response_model=GatewayHealthResponse)
 async def get_gateway_status():
     status_info = await openclaw_client.get_gateway_status()
+    code = status_info.get("status_code")
+    uptime = f"HTTP {code}" if code is not None else None
     return GatewayHealthResponse(
         status=status_info.get("status", "unknown"),
         gateway_reachable=status_info.get("gateway_reachable", False),
         gateway_url=status_info.get("gateway_url", ""),
         active_agent=status_info.get("active_agent", "main"),
         active_model=status_info.get("active_model", "9router/oc/hy3-free"),
-        uptime_info=status_info.get("status_code", None)
+        uptime_info=uptime
     )
 
 @router.get("/models")

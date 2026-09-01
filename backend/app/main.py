@@ -42,7 +42,22 @@ async def health_check():
         "openclaw_gateway": settings.openclaw_gateway_url
     }
 
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+@app.exception_handler(StarletteHTTPException)
+async def spa_exception_handler(request, exc):
+    if exc.status_code == 404:
+        if request.url.path.startswith("/api") or request.url.path.startswith("/docs") or request.url.path.startswith("/openapi.json"):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        if frontend_dist.exists():
+            index_file = frontend_dist / "index.html"
+            if index_file.exists():
+                return FileResponse(str(index_file))
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="static")
 

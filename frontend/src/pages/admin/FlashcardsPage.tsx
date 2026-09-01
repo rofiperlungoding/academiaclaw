@@ -76,7 +76,7 @@ export function FlashcardsPage() {
 
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors shadow-sm shadow-blue-200"
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors shadow-sm shadow-brand-200"
         >
           <Plus className="w-4 h-4" />
           <span>Buat Kartu Baru</span>
@@ -91,7 +91,7 @@ export function FlashcardsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari pertanyaan atau konsep jawaban..."
-            className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+            className="w-full bg-white border border-slate-200/90 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
           />
         </div>
 
@@ -100,7 +100,7 @@ export function FlashcardsPage() {
           <select
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+            className="bg-white border border-slate-200/90 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
           >
             <option value="all">Semua Status FSRS</option>
             <option value="0">New (Belum Diuji)</option>
@@ -130,7 +130,7 @@ export function FlashcardsPage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Misal: Apa kompleksitas waktu rotasi pada AVL Tree?"
-                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
                 required
               />
             </div>
@@ -140,7 +140,7 @@ export function FlashcardsPage() {
               <select
                 value={cardType}
                 onChange={(e) => setCardType(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
               >
                 <option value="Concept">Concept</option>
                 <option value="Algorithm">Algorithm</option>
@@ -157,7 +157,7 @@ export function FlashcardsPage() {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Misal: O(1) karena rotasi hanya memodifikasi pointer child dan parent lokal pada subtree yang tidak seimbang."
-              className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
               required
             />
           </div>
@@ -172,7 +172,7 @@ export function FlashcardsPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+              className="px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors shadow-sm shadow-brand-200"
             >
               Simpan Kartu
             </button>
@@ -198,7 +198,7 @@ export function FlashcardsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-100 uppercase">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-semibold border border-brand-100 uppercase">
                         {card.card_type || 'Concept'}
                       </span>
                       {isDue && (
@@ -227,7 +227,7 @@ export function FlashcardsPage() {
                   <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
                     Stability: {card.stability.toFixed(2)}d
                   </span>
-                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 font-semibold">
+                  <span className="bg-brand-50 text-brand-700 px-2 py-0.5 rounded border border-brand-100 font-semibold">
                     Retrievability: {Math.round(card.retrievability * 100)}%
                   </span>
                   <span className="bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
@@ -239,7 +239,7 @@ export function FlashcardsPage() {
                   <span className={`ml-auto px-2 py-0.5 rounded font-medium ${
                     card.state === 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                     card.state === 1 ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                    card.state === 2 ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-red-50 text-red-700 border border-red-100'
+                    card.state === 2 ? 'bg-brand-50 text-brand-700 border border-brand-100' : 'bg-red-50 text-red-700 border border-red-100'
                   }`}>
                     State: {['New', 'Learning', 'Review', 'Relearning'][card.state]}
                   </span>
