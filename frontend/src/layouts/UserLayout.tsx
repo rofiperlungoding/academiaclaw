@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { BookOpen, Brain, CalendarCheck, MessageCircle, Sparkles, LogOut } from 'lucide-react';
+import { BookOpen, FileText, Brain, CalendarCheck, MessageCircle, Sparkles, LogOut } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import type { HeartbeatSummary } from '../types';
 
 const navItems = [
   { to: '/app', label: 'Beranda', icon: BookOpen, end: true },
+  { to: '/app/materials', label: 'Materi', icon: FileText },
   { to: '/app/review', label: 'Review', icon: Brain },
   { to: '/app/schedule', label: 'Jadwal', icon: CalendarCheck },
   { to: '/app/ask', label: 'Tanya AI', icon: MessageCircle },
@@ -90,7 +91,7 @@ export function UserLayout() {
               </div>
               <div className="text-xs">
                 <span className="font-medium text-slate-700">{user?.name?.split(' ')[0] || 'User'}</span>
-                <span className="text-slate-400 ml-1 text-[10px]">· {user?.faculty || 'FILKOM'}</span>
+                <span className="text-slate-400 ml-1 text-[10px]">· {user?.university || user?.faculty || 'Akademik'}</span>
               </div>
             </div>
 

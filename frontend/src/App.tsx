@@ -8,6 +8,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { DashboardPage } from './pages/user/DashboardPage';
+import { MaterialsPage } from './pages/user/MaterialsPage';
 import { ReviewPage } from './pages/user/ReviewPage';
 import { SchedulePage } from './pages/user/SchedulePage';
 import { AskPage } from './pages/user/AskPage';
@@ -34,6 +35,7 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
+          <Route path="materials" element={<MaterialsPage />} />
           <Route path="review" element={<ReviewPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="ask" element={<AskPage />} />

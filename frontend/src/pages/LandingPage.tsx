@@ -140,8 +140,7 @@ export function LandingPage() {
           </h1>
 
           <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto mb-10 animate-slide-up stagger-1 text-balance leading-relaxed">
-            Autonomous agentic AI yang memahami materi kuliah melalui Knowledge Graph,
-            mengoptimalkan ingatan dengan FSRS-6, dan bertindak proaktif sebelum Anda bertanya.
+            Copilot akademik universal untuk universitas di seluruh dunia. Unggah materi kuliah PDF atau modul apapun — AI otomatis menyusun Knowledge Graph, membuat Flashcards FSRS-6, dan memandu belajar secara proaktif.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-slide-up stagger-2">

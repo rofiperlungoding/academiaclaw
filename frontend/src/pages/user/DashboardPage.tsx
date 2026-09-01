@@ -57,15 +57,22 @@ export function DashboardPage() {
               {greeting}, {firstName}
             </h1>
             <span className="badge-brand">
-              {user?.program || 'Teknik Komputer'} · {user?.faculty || 'UB'}
+              {user?.program || 'Akademik'} {user?.university ? `· ${user.university}` : (user?.faculty ? `· ${user.faculty}` : '')}
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            {today} — Agenda belajar dan status retensi memori FSRS-6.
+            {today} — Agenda belajar, kurikulum materi, dan status retensi memori FSRS-6.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/app/materials')}
+            className="btn-secondary text-xs px-3.5 py-2"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+            <span>Unggah Materi PDF</span>
+          </button>
           <button
             onClick={() => navigate('/app/ask')}
             className="btn-secondary text-xs px-3.5 py-2"
@@ -138,7 +145,7 @@ export function DashboardPage() {
               </span>
             </div>
             <p className="text-3xl font-semibold text-slate-900 tracking-tight">
-              {stats ? `${Math.round(stats.average_retrievability * 100)}%` : '--'}
+              {stats ? `${Math.round(stats.average_retrievability > 1 ? stats.average_retrievability : stats.average_retrievability * 100)}%` : '--'}
             </p>
             <p className="text-xs text-slate-500 mt-1">Rata-rata retensi memori</p>
             <div className="mt-3 text-[11px] text-slate-400">
@@ -282,7 +289,7 @@ export function DashboardPage() {
               <div className="space-y-4">
                 <div className="flex items-end gap-2 h-32 pt-4">
                   {stats.retention_forecast_7d.map((day, i) => {
-                    const pct = Math.round(day.projected_retention * 100);
+                    const pct = Math.round(day.projected_retention > 1 ? day.projected_retention : day.projected_retention * 100);
                     return (
                       <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
                         <span className="text-[10px] font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
