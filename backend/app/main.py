@@ -7,7 +7,7 @@ from pathlib import Path
 
 from backend.app.core.config import settings
 from backend.app.core.database import init_db
-from backend.app.routers import knowledge, flashcards, tasks, agent
+from backend.app.routers import knowledge, flashcards, tasks, agent, auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(knowledge.router)
 app.include_router(flashcards.router)
 app.include_router(tasks.router)

@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     
     nine_router_base_url: str = "https://9router.jcamp.io/v1"
     nine_router_api_key: str = "sk-91c032184a2d046f-ljlliq-df6e4c2c"
+    
+    jwt_secret: str = "academiaclaw-jwt-secret-key-idwebhost-competition-2026"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 72
 
     class Config:
         env_file = ".env"

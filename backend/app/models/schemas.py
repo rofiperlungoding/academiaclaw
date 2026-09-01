@@ -1,6 +1,30 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+
+class UserBase(BaseModel):
+    nim: str
+    name: str
+    email: Optional[str] = ""
+    faculty: Optional[str] = "Fakultas Ilmu Komputer"
+    program: Optional[str] = "Teknik Komputer"
+    university: Optional[str] = "Universitas Brawijaya"
+
+class UserRegisterRequest(UserBase):
+    password: str = Field(..., min_length=4)
+
+class UserLoginRequest(BaseModel):
+    nim: str
+    password: str
+
+class UserResponse(UserBase):
+    id: str
+    created_at: datetime
+
+class AuthResponse(BaseModel):
+    user: UserResponse
+    access_token: str
+    token_type: str = "bearer"
 
 class FlashcardBase(BaseModel):
     question: str

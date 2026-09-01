@@ -1,3 +1,20 @@
+export interface User {
+  id: string;
+  nim: string;
+  name: string;
+  email?: string;
+  faculty?: string;
+  program?: string;
+  university?: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  access_token: string;
+  token_type: string;
+}
+
 export interface Entity {
   id: string;
   name: string;

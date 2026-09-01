@@ -1,4 +1,6 @@
 import type {
+  User,
+  AuthResponse,
   DocumentItem,
   KnowledgeGraphData,
   Flashcard,
@@ -10,11 +12,73 @@ import type {
   ModelItem
 } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
+function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const token = localStorage.getItem('academiaclaw_token');
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 export const api = {
+  // ——— AUTHENTICATION APIS ———
+  async login(nim: string, password: string): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nim, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'NIM atau password salah.');
+    }
+    const data: AuthResponse = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('academiaclaw_token', data.access_token);
+    }
+    return data;
+  },
+
+  async register(payload: {
+    nim: string;
+    name: string;
+    password: string;
+    email?: string;
+    faculty?: string;
+    program?: string;
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Gagal mendaftarkan akun.');
+    }
+    const data: AuthResponse = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('academiaclaw_token', data.access_token);
+    }
+    return data;
+  },
+
+  async getMe(): Promise<User> {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Session invalid');
+    return res.json();
+  },
+
+  // ——— KNOWLEDGE & RAG APIS ———
   async getDocuments(): Promise<DocumentItem[]> {
-    const res = await fetch(`${API_BASE}/knowledge/documents`);
+    const res = await fetch(`${API_BASE}/knowledge/documents`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch documents');
     return res.json();
   },
@@ -26,6 +90,7 @@ export const api = {
 
     const res = await fetch(`${API_BASE}/knowledge/upload`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData,
     });
     if (!res.ok) {
@@ -37,7 +102,7 @@ export const api = {
 
   async getGraph(docId?: string): Promise<KnowledgeGraphData> {
     const url = docId ? `${API_BASE}/knowledge/graph?doc_id=${docId}` : `${API_BASE}/knowledge/graph`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch knowledge graph');
     return res.json();
   },
@@ -51,7 +116,7 @@ export const api = {
   }> {
     const res = await fetch(`${API_BASE}/knowledge/ask`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ query, doc_ids: docIds }),
     });
     if (!res.ok) throw new Error('Failed to query Dual-Level RAG');
@@ -61,20 +126,24 @@ export const api = {
   async deleteDocument(docId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/knowledge/documents/${docId}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete document');
   },
 
+  // ——— FSRS-6 FLASHCARD APIS ———
   async getFlashcards(dueOnly = false, docId?: string): Promise<Flashcard[]> {
     let url = `${API_BASE}/flashcards?due_only=${dueOnly}`;
     if (docId) url += `&doc_id=${docId}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch flashcards');
     return res.json();
   },
 
   async getRetentionStats(): Promise<RetentionStats> {
-    const res = await fetch(`${API_BASE}/flashcards/stats`);
+    const res = await fetch(`${API_BASE}/flashcards/stats`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch retention stats');
     return res.json();
   },
@@ -82,7 +151,7 @@ export const api = {
   async submitReview(cardId: string, rating: number): Promise<ReviewResponse> {
     const res = await fetch(`${API_BASE}/flashcards/review`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ card_id: cardId, rating }),
     });
     if (!res.ok) throw new Error('Failed to submit card review');
@@ -92,7 +161,7 @@ export const api = {
   async createFlashcard(data: { question: string; answer: string; card_type?: string; doc_id?: string }): Promise<Flashcard> {
     const res = await fetch(`${API_BASE}/flashcards`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to create flashcard');
@@ -102,10 +171,12 @@ export const api = {
   async deleteFlashcard(cardId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/flashcards/${cardId}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete flashcard');
   },
 
+  // ——— ACADEMIC TASKS APIS ———
   async getTasks(status?: string, course?: string): Promise<AcademicTask[]> {
     let url = `${API_BASE}/tasks`;
     const params = [];
@@ -113,7 +184,7 @@ export const api = {
     if (course) params.push(`course=${encodeURIComponent(course)}`);
     if (params.length) url += `?${params.join('&')}`;
 
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch tasks');
     return res.json();
   },
@@ -128,7 +199,7 @@ export const api = {
   }): Promise<AcademicTask> {
     const res = await fetch(`${API_BASE}/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to create task');
@@ -138,7 +209,7 @@ export const api = {
   async updateTask(taskId: string, data: Partial<AcademicTask>): Promise<AcademicTask> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update task');
@@ -148,24 +219,32 @@ export const api = {
   async deleteTask(taskId: string): Promise<void> {
     const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to delete task');
   },
 
   async getHeartbeatSummary(): Promise<HeartbeatSummary> {
-    const res = await fetch(`${API_BASE}/tasks/heartbeat/summary`);
+    const res = await fetch(`${API_BASE}/tasks/heartbeat/summary`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch heartbeat summary');
     return res.json();
   },
 
+  // ——— OPENCLAW AGENT APIS ———
   async getGatewayStatus(): Promise<GatewayStatus> {
-    const res = await fetch(`${API_BASE}/agent/gateway-status`);
+    const res = await fetch(`${API_BASE}/agent/gateway-status`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch gateway status');
     return res.json();
   },
 
   async getModels(): Promise<ModelItem[]> {
-    const res = await fetch(`${API_BASE}/agent/models`);
+    const res = await fetch(`${API_BASE}/agent/models`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch models');
     return res.json();
   },
@@ -177,7 +256,7 @@ export const api = {
   }> {
     const res = await fetch(`${API_BASE}/agent/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ message, session_id: sessionId, model, context_mode: contextMode }),
     });
     if (!res.ok) throw new Error('Failed to send message to agent');
@@ -185,7 +264,9 @@ export const api = {
   },
 
   async getPrompts(): Promise<Record<string, string>> {
-    const res = await fetch(`${API_BASE}/agent/prompts`);
+    const res = await fetch(`${API_BASE}/agent/prompts`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch agent prompts');
     return res.json();
   },
@@ -197,9 +278,10 @@ export const api = {
     url: string;
     error?: string;
   }> {
-    const res = await fetch(`${API_BASE}/agent/ping`);
+    const res = await fetch(`${API_BASE}/agent/ping`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to ping gateway');
     return res.json();
   },
 };
-

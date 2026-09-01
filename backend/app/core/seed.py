@@ -3,11 +3,16 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import aiosqlite
 from backend.app.core.config import settings
+from backend.app.core.security import hash_password
 
 async def seed_data():
     async with aiosqlite.connect(settings.database_url) as db:
         db.row_factory = aiosqlite.Row
         
+        # Check if user exists
+        cur = await db.execute("SELECT COUNT(*) FROM users")
+        user_count = (await cur.fetchone())[0]
+
         # Check if tasks exist
         cur = await db.execute("SELECT COUNT(*) FROM academic_tasks")
         task_count = (await cur.fetchone())[0]
@@ -17,6 +22,25 @@ async def seed_data():
         card_count = (await cur.fetchone())[0]
         
         now = datetime.now(timezone.utc)
+
+        if user_count == 0:
+            user_id = str(uuid.uuid4())
+            pw_hash = hash_password("demo1234")
+            await db.execute("""
+                INSERT INTO users (id, nim, name, email, faculty, program, university, password_hash, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                "255150307111073",
+                "Muhammad Rofi Darmawan",
+                "rofi@student.ub.ac.id",
+                "Fakultas Ilmu Komputer",
+                "Teknik Komputer",
+                "Universitas Brawijaya",
+                pw_hash,
+                now.isoformat()
+            ))
+            print("Seeded default demo user (NIM: 255150307111073).")
         
         if task_count == 0:
             tasks = [

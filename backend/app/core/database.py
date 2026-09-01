@@ -9,6 +9,20 @@ async def get_db():
 async def init_db():
     async with aiosqlite.connect(settings.database_url) as db:
         await db.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            nim TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT DEFAULT '',
+            faculty TEXT DEFAULT 'Fakultas Ilmu Komputer',
+            program TEXT DEFAULT 'Teknik Komputer',
+            university TEXT DEFAULT 'Universitas Brawijaya',
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
+        await db.execute("""
         CREATE TABLE IF NOT EXISTS documents (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
