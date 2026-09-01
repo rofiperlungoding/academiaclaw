@@ -4,34 +4,31 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
-      colors: {
-        background: "#0B0F19",
-        surface: "#111827",
-        surfaceElevated: "#1E293B",
-        surfaceBorder: "#334155",
-        brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-        },
-        navy: {
-          900: '#070A10',
-          800: '#0B0F19',
-          700: '#111827',
-          600: '#1E293B',
-          500: '#334155'
-        }
-      },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-      }
+        sans: ['Inter Variable', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      colors: {
+        accent: {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+        },
+      },
+      boxShadow: {
+        'card': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+        'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04)',
+        'elevated': '0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04)',
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.25rem',
+      },
     },
   },
   plugins: [],
