@@ -49,6 +49,26 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Check deploy credentials
+        # Without this the SSH action fails with a bare "can't connect without a
+        # private SSH key or password", which says nothing about what to fix.
+        run: |
+          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "::error::VPS_SSH_KEY is not set."
+            echo "This workflow is key-only on purpose: the root password was published"
+            echo "in this repository's git history, so password auth is not an option."
+            echo ""
+            echo "To fix, on your machine:"
+            echo "  ssh-keygen -t ed25519 -C academiaclaw-deploy -f ~/.ssh/academiaclaw"
+            echo "  ssh-copy-id -p <PORT> -i ~/.ssh/academiaclaw.pub root@<HOST>"
+            echo "then add the PRIVATE key (~/.ssh/academiaclaw) as the VPS_SSH_KEY secret,"
+            echo "and delete the VPS_PASSWORD secret."
+            echo ""
+            echo "Full steps: RUNBOOK.md, step 4."
+            exit 1
+          fi
+          echo "VPS_SSH_KEY present."
+
       - name: Deploy via SSH
         # Pinned to a release tag rather than @master: an unpinned third-party
         # action executes whatever its author pushes next, with our deploy key.
@@ -60,8 +80,9 @@ jobs:
           # Key-only. Password auth over SSH on a public repo is how the old
           # root password leaked in the first place.
           key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
           script: |
+            # script_stop was removed in ssh-action v1; `set -e` is the equivalent.
+            set -e
             if [ ! -d "/opt/academiaclaw/.git" ]; then
               echo "Cloning repository for the first time..."
               rm -rf /opt/academiaclaw
