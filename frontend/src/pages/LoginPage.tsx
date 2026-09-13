@@ -1,447 +1,219 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Brain, Loader2, GraduationCap, Eye, EyeOff, ArrowRight, Sparkles, User } from 'lucide-react';
+import { Brain, Loader2, Eye, EyeOff } from 'lucide-react';
+
+// Placeholder demo account seeded by the backend. Not a real person.
+const DEMO_NIM = '2200000001';
+const DEMO_PASSWORD = 'demo1234';
+
+type Mode = 'login' | 'register';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, register, isAuthenticated } = useAuth();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<Mode>('login');
   const [nim, setNim] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [faculty, setFaculty] = useState('Fakultas Ilmu Komputer');
-  const [program, setProgram] = useState('Teknik Komputer');
+  const [university, setUniversity] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [program, setProgram] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [shake, setShake] = useState(false);
 
   if (isAuthenticated) {
     navigate('/app', { replace: true });
     return null;
   }
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const run = async (fn: () => Promise<boolean>) => {
     setError('');
-
-    if (!nim.trim() || !password.trim()) {
-      setError('NIM dan password harus diisi.');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const ok = await login(nim.trim(), password);
-      if (ok) {
-        navigate('/app', { replace: true });
-      }
-    } catch (err: any) {
-      setError(err.message || 'NIM atau password salah.');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
+      if (await fn()) navigate('/app', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!nim.trim() || !name.trim() || !password.trim()) {
-      setError('NIM, Nama Lengkap, dan Password wajib diisi.');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-      return;
+    if (mode === 'login') {
+      if (!nim.trim() || !password) return setError('Student ID and password are required.');
+      return run(() => login(nim.trim(), password));
     }
-
-    setIsLoading(true);
-    try {
-      const ok = await register({
+    if (!nim.trim() || !name.trim() || !password) {
+      return setError('Student ID, name, and password are required.');
+    }
+    run(() =>
+      register({
         nim: nim.trim(),
         name: name.trim(),
         password,
-        faculty: faculty.trim(),
-        program: program.trim(),
-      });
-      if (ok) {
-        navigate('/app', { replace: true });
-      }
-    } catch (err: any) {
-      setError(err.message || 'Pendaftaran gagal.');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-    } finally {
-      setIsLoading(false);
-    }
+        university: university.trim() || undefined,
+        faculty: faculty.trim() || undefined,
+        program: program.trim() || undefined,
+      })
+    );
   };
 
-  const handleDemoLogin = async () => {
-    setNim('255150307111073');
-    setPassword('demo1234');
+  const switchMode = (next: Mode) => {
+    setMode(next);
     setError('');
-    setIsLoading(true);
-    try {
-      const ok = await login('255150307111073', 'demo1234');
-      if (ok) navigate('/app', { replace: true });
-    } catch (err: any) {
-      setError(err.message || 'Gagal masuk akun demo.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
-    <div className="min-h-screen bg-surface-50 flex">
-      {/* Left Panel — Branding */}
-      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-violet-900 flex-col justify-between p-10">
-        {/* Decorative orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 right-20 w-[350px] h-[350px] rounded-full bg-brand-500/15 blur-[100px] animate-float" />
-          <div className="absolute bottom-20 left-10 w-[250px] h-[250px] rounded-full bg-violet-500/10 blur-[80px] animate-float" style={{ animationDelay: '2s' }} />
-        </div>
+    <div className="min-h-screen bg-white flex flex-col">
+      <header className="mx-auto w-full max-w-5xl px-6 h-14 flex items-center">
+        <Link to="/" className="flex items-center gap-2 text-zinc-900">
+          <Brain className="w-4 h-4" />
+          <span className="text-sm font-semibold">AcademiaClaw</span>
+        </Link>
+      </header>
 
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0z' fill='none' stroke='%23fff' stroke-width='0.5'/%3E%3C/svg%3E")`,
-          }}
-        />
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-base font-semibold text-white tracking-tight">AcademiaClaw</span>
-          </div>
-          <p className="text-xs text-white/40 font-medium">Academic Copilot</p>
-        </div>
-
-        <div className="relative z-10 space-y-6">
-          <h2 className="text-3xl font-bold text-white tracking-tight leading-tight text-balance">
-            Autonomous Agentic AI
-            <br />
-            <span className="text-brand-300">untuk Mahasiswa & Akademisi.</span>
-          </h2>
-          <p className="text-sm text-white/50 leading-relaxed max-w-md">
-            Database SQLite tersinkronisasi penuh dengan autentikasi berbasis JWT, algoritma retensi FSRS-6, dan Knowledge Graph LightRAG.
+      <main className="flex-1 flex items-start justify-center px-6 pt-12 pb-20">
+        <div className="w-full max-w-[352px]">
+          <h1 className="text-xl font-semibold tracking-[-0.02em] text-zinc-900">
+            {mode === 'login' ? 'Sign in' : 'Create account'}
+          </h1>
+          <p className="mt-1.5 muted">
+            {mode === 'login'
+              ? 'Use your student ID and password.'
+              : 'Fill in your academic details. Works for any campus.'}
           </p>
 
-          <div className="flex items-center gap-6 pt-2">
+          <form onSubmit={submit} className="mt-8 space-y-4">
             <div>
-              <p className="text-2xl font-bold text-white">100%</p>
-              <p className="text-[10px] text-white/40 font-medium">Real SQLite DB</p>
+              <label className="label" htmlFor="nim">Student ID</label>
+              <input
+                id="nim"
+                className="input-field"
+                value={nim}
+                onChange={(e) => setNim(e.target.value)}
+                placeholder="2200000001"
+                autoComplete="username"
+                autoFocus
+              />
             </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div>
-              <p className="text-2xl font-bold text-white">JWT</p>
-              <p className="text-[10px] text-white/40 font-medium">Secure Auth Token</p>
-            </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div>
-              <p className="text-2xl font-bold text-white">FSRS-6</p>
-              <p className="text-[10px] text-white/40 font-medium">Memory Engine</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="relative z-10">
-          <p className="text-[10px] text-white/30 font-medium">
-            IDwebhost AI Competition 2026 · Fullstack FastAPI & SQLite · Universitas Brawijaya
-          </p>
-        </div>
-      </div>
-
-      {/* Right Panel — Login / Register Form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 overflow-y-auto">
-        <div className="w-full max-w-sm space-y-6 animate-fade-in my-auto py-6">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2.5 justify-center mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 flex items-center justify-center shadow-glow-sm">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="text-lg font-semibold text-slate-900 block leading-tight">AcademiaClaw</span>
-              <span className="text-[10px] text-slate-400 font-medium">Academic Copilot</span>
-            </div>
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              {mode === 'login' ? 'Selamat Datang' : 'Daftar Akun Baru'}
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {mode === 'login'
-                ? 'Masuk dengan NIM dan password yang terdaftar di database.'
-                : 'Buat akun baru untuk mulai menggunakan AcademiaClaw.'}
-            </p>
-          </div>
-
-          {/* Mode Switcher Tabs */}
-          <div className="flex p-1 rounded-xl bg-slate-100/80 border border-slate-200/60">
-            <button
-              type="button"
-              onClick={() => { setMode('login'); setError(''); }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                mode === 'login'
-                  ? 'bg-white text-brand-600 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Masuk
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('register'); setError(''); }}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                mode === 'register'
-                  ? 'bg-white text-brand-600 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Daftar Baru
-            </button>
-          </div>
-
-          {/* Demo login shortcut (only in login mode) */}
-          {mode === 'login' && (
-            <button
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-50 border border-brand-100 hover:bg-brand-100 transition-colors text-left group disabled:opacity-60"
-            >
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-violet-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-brand-900">Login Demo — Muhammad Rofi</p>
-                <p className="text-[10px] text-brand-600 truncate">NIM: 255150307111073 · FILKOM UB (Real DB Auth)</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-brand-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          )}
-
-          {mode === 'login' && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">atau login kredensial</span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-          )}
-
-          {/* LOGIN FORM */}
-          {mode === 'login' ? (
-            <form
-              onSubmit={handleLoginSubmit}
-              className={`space-y-4 ${shake ? 'animate-[shake_0.4s_ease-in-out]' : ''}`}
-            >
-              <div className="space-y-1.5">
-                <label htmlFor="nim" className="text-xs font-medium text-slate-700 block">
-                  NIM (Nomor Induk Mahasiswa)
-                </label>
-                <div className="relative">
-                  <GraduationCap className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            {mode === 'register' && (
+              <>
+                <div>
+                  <label className="label" htmlFor="name">Full name</label>
                   <input
-                    id="nim"
-                    type="text"
-                    value={nim}
-                    onChange={(e) => setNim(e.target.value)}
-                    placeholder="255150307111073"
-                    className="input-field pl-10"
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="password" className="text-xs font-medium text-slate-700 block">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="input-field pr-10"
-                    autoComplete="current-password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-100 text-xs text-red-700 animate-fade-in">
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary w-full py-3 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memverifikasi Database...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Masuk ke Dashboard</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          ) : (
-            /* REGISTER FORM */
-            <form
-              onSubmit={handleRegisterSubmit}
-              className={`space-y-3.5 ${shake ? 'animate-[shake_0.4s_ease-in-out]' : ''}`}
-            >
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 block">
-                  NIM
-                </label>
-                <div className="relative">
-                  <GraduationCap className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={nim}
-                    onChange={(e) => setNim(e.target.value)}
-                    placeholder="Contoh: 255150300111001"
-                    className="input-field pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 block">
-                  Nama Lengkap
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
+                    id="name"
+                    className="input-field"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Nama Mahasiswa"
-                    className="input-field pl-10"
-                    required
+                    placeholder="John Doe"
+                    autoComplete="name"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-700 block">
-                    Program Studi
-                  </label>
+                <div>
+                  <label className="label" htmlFor="university">University</label>
                   <input
-                    type="text"
-                    value={program}
-                    onChange={(e) => setProgram(e.target.value)}
-                    placeholder="Teknik Komputer"
+                    id="university"
                     className="input-field"
+                    value={university}
+                    onChange={(e) => setUniversity(e.target.value)}
+                    placeholder="Example University"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-700 block">
-                    Fakultas
-                  </label>
-                  <input
-                    type="text"
-                    value={faculty}
-                    onChange={(e) => setFaculty(e.target.value)}
-                    placeholder="FILKOM"
-                    className="input-field"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label" htmlFor="faculty">Faculty</label>
+                    <input
+                      id="faculty"
+                      className="input-field"
+                      value={faculty}
+                      onChange={(e) => setFaculty(e.target.value)}
+                      placeholder="Computer Science"
+                    />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="program">Programme</label>
+                    <input
+                      id="program"
+                      className="input-field"
+                      value={program}
+                      onChange={(e) => setProgram(e.target.value)}
+                      placeholder="Computer Engineering"
+                    />
+                  </div>
                 </div>
+              </>
+            )}
+
+            <div>
+              <label className="label" htmlFor="password">Password</label>
+              <div className="relative">
+                <input
+                  id="password"
+                  className="input-field pr-9"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'register' ? 'At least 4 characters' : '••••••••'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 top-0 h-9 w-9 flex items-center justify-center text-zinc-400 hover:text-zinc-700"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
               </div>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-700 block">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimal 4 karakter"
-                    className="input-field pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+            {error && (
+              <p role="alert" className="text-[13px] text-red-600 animate-fade-in">{error}</p>
+            )}
 
-              {error && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-100 text-xs text-red-700 animate-fade-in">
-                  <span>{error}</span>
-                </div>
-              )}
+            <button type="submit" disabled={isLoading} className="btn-primary w-full">
+              {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {mode === 'login' ? 'Sign in' : 'Sign up'}
+            </button>
+          </form>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary w-full py-3 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Mendaftarkan ke Database...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Daftar & Masuk</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+          <div className="mt-6 flex items-center gap-3">
+            <div className="divider flex-1" />
+            <span className="text-[11px] text-zinc-400">or</span>
+            <div className="divider flex-1" />
+          </div>
 
-          <p className="text-center text-[10px] text-slate-400">
-            Data disimpan di database SQLite backend VPS. Password dienkripsi dengan PBKDF2-HMAC-SHA256.
+          <button
+            onClick={() => run(() => login(DEMO_NIM, DEMO_PASSWORD))}
+            disabled={isLoading}
+            className="btn-secondary w-full mt-6"
+          >
+            Sign in with the demo account
+          </button>
+          <p className="mt-2 text-[11px] text-zinc-400">
+            ID {DEMO_NIM} · password {DEMO_PASSWORD}
+          </p>
+
+          <p className="mt-8 text-[13px] text-zinc-500">
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+              className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
+            >
+              {mode === 'login' ? 'Sign up' : 'Sign in'}
+            </button>
           </p>
         </div>
-      </div>
+      </main>
 
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-6px); }
-          50% { transform: translateX(6px); }
-          75% { transform: translateX(-3px); }
-        }
-      `}</style>
+      <footer className="mx-auto w-full max-w-5xl px-6 py-6 text-xs text-zinc-400 border-t border-zinc-100">
+        AcademiaClaw · IDwebhost AI Competition 2026
+      </footer>
     </div>
   );
 }

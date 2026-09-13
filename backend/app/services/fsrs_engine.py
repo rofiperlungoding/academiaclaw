@@ -1,7 +1,6 @@
 from datetime import datetime, timezone, timedelta
-from typing import Tuple, Dict, Any, List
+from typing import Dict, Any, List
 from fsrs import Card as FSRSCard, Rating as FSRSRating, Scheduler, State as FSRSState
-import math
 
 class FSRSEngine:
     def __init__(self, desired_retention: float = 0.90):
@@ -18,6 +17,12 @@ class FSRSEngine:
         return mapping.get(val, FSRSRating.Good)
 
     def calculate_retrievability(self, stability: float, last_review: datetime, current_time: datetime = None) -> float:
+        """Probability of recall right now, per the scheduler's own forgetting curve.
+
+        Delegated to py-fsrs rather than hand-rolled: FSRS-6 fits the curve's decay
+        as a trained weight (w20), so the fixed -0.5 exponent of FSRS-4.5/5 drifts
+        badly on long intervals — ~25 points too pessimistic at one year.
+        """
         if stability is None or stability <= 0:
             return 1.0
         if current_time is None:
@@ -27,9 +32,14 @@ class FSRSEngine:
         if current_time.tzinfo is None:
             current_time = current_time.replace(tzinfo=timezone.utc)
 
-        elapsed_days = max(0.0, (current_time - last_review).total_seconds() / 86400.0)
-        retrievability = math.pow(1.0 + (19.0 / 81.0) * (elapsed_days / stability), -0.5)
-        return max(0.0, min(1.0, retrievability))
+        card = FSRSCard(
+            state=FSRSState.Review,
+            stability=float(stability),
+            difficulty=5.0,  # unused by the retrievability term
+            due=current_time,
+            last_review=last_review,
+        )
+        return max(0.0, min(1.0, self.scheduler.get_card_retrievability(card, current_time)))
 
     def create_new_card(self) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)

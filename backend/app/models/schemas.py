@@ -6,9 +6,9 @@ class UserBase(BaseModel):
     nim: str
     name: str
     email: Optional[str] = ""
-    faculty: Optional[str] = "Fakultas Ilmu Komputer"
-    program: Optional[str] = "Teknik Komputer"
-    university: Optional[str] = "Universitas Brawijaya"
+    faculty: Optional[str] = ""
+    program: Optional[str] = ""
+    university: Optional[str] = ""
 
 class UserRegisterRequest(UserBase):
     password: str = Field(..., min_length=4)

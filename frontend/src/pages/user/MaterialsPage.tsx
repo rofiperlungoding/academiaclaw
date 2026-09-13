@@ -1,21 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Upload,
-  FileText,
-  Trash2,
-  Brain,
-  MessageSquare,
-  Network,
-  Loader2,
-  Globe,
-  Plus
-} from 'lucide-react';
+import { Upload, Trash2, Loader2, Network } from 'lucide-react';
 import type { DocumentItem, KnowledgeGraphData } from '../../types';
 import { api } from '../../api';
 import { GraphVisualizer } from '../../components/GraphVisualizer';
 import { EmptyDocuments } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
+
+type Tab = 'list' | 'graph';
 
 export function MaterialsPage() {
   const navigate = useNavigate();
@@ -23,38 +15,33 @@ export function MaterialsPage() {
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'list' | 'graph'>('list');
+  const [activeTab, setActiveTab] = useState<Tab>('list');
 
-  // Upload State
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStep, setUploadStep] = useState<string>('');
 
-  // Graph Viewer Modal / Selection
-  const [selectedDocId, setSelectedDocId] = useState<string | undefined>(undefined);
+  const [selectedDocId, setSelectedDocId] = useState<string | undefined>();
   const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
 
   const fetchDocs = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const docs = await api.getDocuments();
-      setDocuments(docs);
+      setDocuments(await api.getDocuments());
     } catch {
-      // ignore
+      /* keep previous list */
     } finally {
       setLoading(false);
     }
   }, []);
 
   const fetchGraph = useCallback(async (docId?: string) => {
+    setGraphLoading(true);
     try {
-      setGraphLoading(true);
-      const g = await api.getGraph(docId);
-      setGraphData(g);
+      setGraphData(await api.getGraph(docId));
     } catch {
-      // ignore
+      setGraphData(null);
     } finally {
       setGraphLoading(false);
     }
@@ -65,19 +52,14 @@ export function MaterialsPage() {
   }, [fetchDocs]);
 
   useEffect(() => {
-    if (activeTab === 'graph') {
-      fetchGraph(selectedDocId);
-    }
+    if (activeTab === 'graph') fetchGraph(selectedDocId);
   }, [activeTab, selectedDocId, fetchGraph]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      setFile(selected);
-      if (!title) {
-        setTitle(selected.name.replace(/\.[^/.]+$/, ''));
-      }
-    }
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
+    if (!title) setTitle(selected.name.replace(/\.[^/.]+$/, ''));
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -85,330 +67,204 @@ export function MaterialsPage() {
     if (!file) return;
 
     setIsUploading(true);
-    setUploadStep('Mem-parsing dan mengekstrak teks PDF...');
-
     try {
-      setTimeout(() => setUploadStep('Mengekstrak Knowledge Graph & Topik (LightRAG)...'), 1500);
-      setTimeout(() => setUploadStep('Membuat kartu Active Recall (FSRS-6)...'), 3000);
-
-      const newDoc = await api.uploadDocument(file, title.trim() || undefined);
-      success(`Materi "${newDoc.title}" berhasil diekstrak dan siap dipelajari!`);
-      
+      const doc = await api.uploadDocument(file, title.trim() || undefined);
+      success(`"${doc.title}" indexed: ${doc.entities_count} entities, ${doc.topics_count} topics.`);
       setFile(null);
       setTitle('');
-      setUploadStep('');
       await fetchDocs();
-    } catch (err: any) {
-      error(err.message || 'Gagal mengunggah dokumen.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Could not upload the document.');
     } finally {
       setIsUploading(false);
-      setUploadStep('');
     }
   };
 
   const handleDelete = async (docId: string, docTitle: string) => {
-    if (!confirm(`Hapus materi "${docTitle}" beserta Knowledge Graph & Flashcard terkait?`)) return;
+    if (!confirm(`Delete "${docTitle}" along with its knowledge graph and flashcards?`)) return;
     try {
       await api.deleteDocument(docId);
-      success('Materi berhasil dihapus.');
-      await fetchDocs();
+      success('Material deleted.');
       if (selectedDocId === docId) setSelectedDocId(undefined);
+      await fetchDocs();
     } catch {
-      error('Gagal menghapus dokumen.');
+      error('Could not delete the document.');
     }
   };
 
-  const viewDocGraph = (docId: string) => {
-    setSelectedDocId(docId);
-    setActiveTab('graph');
-  };
+  const selectedTitle = documents.find((d) => d.id === selectedDocId)?.title;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* ——— HEADER ——— */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="page-title flex items-center gap-2">
-              <span>Materi Kuliah & Knowledge Base</span>
-            </h1>
-            <span className="badge-brand flex items-center gap-1">
-              <Globe className="w-3 h-3" />
-              Worldwide & Multi-Campus
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Unggah modul, slide, textbook, atau silabus PDF dari universitas manapun di dunia.
-            AI akan otomatis menyusun Knowledge Graph dan Flashcards FSRS-6.
-          </p>
-        </div>
+    <div className="animate-fade-in">
+      <header>
+        <h1 className="page-title">Material</h1>
+        <p className="mt-1 muted max-w-lg">
+          Upload slides, modules, textbooks, or a syllabus from any campus. The system builds
+          the knowledge graph and FSRS-6 cards automatically.
+        </p>
+      </header>
 
-        <div className="flex items-center gap-2">
-          <div className="flex p-1 rounded-xl bg-slate-100/80 border border-slate-200/60">
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                activeTab === 'list'
-                  ? 'bg-white text-brand-600 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Daftar Materi ({documents.length})</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('graph');
-                setSelectedDocId(undefined);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
-                activeTab === 'graph'
-                  ? 'bg-white text-brand-600 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Network className="w-3.5 h-3.5" />
-              <span>Knowledge Graph</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ——— UPLOAD DROPZONE / FORM ——— */}
-      <div className="card p-6 shadow-xs border border-brand-100/80 bg-gradient-to-br from-white via-white to-brand-50/20">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-            <Upload className="w-4 h-4 text-brand-600" />
+      {/* upload */}
+      <form onSubmit={handleUpload} className="mt-8 pb-8 border-b border-zinc-100 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="doc-title">Title</label>
+            <input
+              id="doc-title"
+              className="input-field"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Linear Algebra · Chapter 3"
+              disabled={isUploading}
+            />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Unggah Materi PDF Baru</h2>
-            <p className="text-[11px] text-slate-500">Mendukung format .pdf, .docx, .txt (Slide Kuliah, Catatan, Silabus)</p>
+            <label className="label" htmlFor="doc-file">File (.pdf, .docx, .txt)</label>
+            <input
+              id="doc-file"
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={handleFileChange}
+              disabled={isUploading}
+              required
+              className="input-field py-1.5 cursor-pointer file:mr-3 file:h-6 file:px-2 file:rounded file:border-0 file:bg-zinc-100 file:text-[11px] file:font-medium file:text-zinc-700"
+            />
           </div>
         </div>
 
-        <form onSubmit={handleUpload} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-slate-700 block mb-1">
-                Judul Materi / Mata Kuliah
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Contoh: CS50 Introduction to Computer Science / Aljabar Linier"
-                className="input-field"
-                disabled={isUploading}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-slate-700 block mb-1">
-                Pilih File Dokumen
-              </label>
-              <input
-                type="file"
-                accept=".pdf,.docx,.txt"
-                onChange={handleFileChange}
-                className="input-field file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer"
-                disabled={isUploading}
-                required
-              />
-            </div>
-          </div>
-
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={isUploading || !file} className="btn-primary">
+            {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {isUploading ? 'Extracting…' : 'Upload & index'}
+          </button>
           {isUploading && (
-            <div className="bg-brand-50/80 border border-brand-100 rounded-xl p-3.5 flex items-center gap-3 animate-fade-in">
-              <Loader2 className="w-4 h-4 animate-spin text-brand-600 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-brand-900">{uploadStep}</p>
-                <p className="text-[10px] text-brand-600 mt-0.5">
-                  LightRAG sedang membangun entitas relasi & FSRS-6 membentuk kartu ingatan.
-                </p>
-              </div>
-            </div>
+            <p className="text-xs text-zinc-400">
+              LightRAG is extracting entities and relations, FSRS-6 is building cards. Takes a few seconds.
+            </p>
           )}
+        </div>
+      </form>
 
-          <div className="flex justify-end gap-2">
+      {/* tabs */}
+      <div className="mt-8 flex items-center gap-1">
+        {([['list', `Documents (${documents.length})`], ['graph', 'Knowledge graph']] as const).map(
+          ([key, label]) => (
             <button
-              type="submit"
-              disabled={isUploading || !file}
-              className="btn-primary text-xs px-5 py-2.5 disabled:opacity-50"
+              key={key}
+              onClick={() => {
+                setActiveTab(key);
+                if (key === 'graph') setSelectedDocId(undefined);
+              }}
+              className={`h-8 px-3 rounded-md text-[13px] font-medium transition-colors ${
+                activeTab === key ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-500 hover:text-zinc-900'
+              }`}
             >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Mengekstrak AI...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Unggah & Ekstrak Knowledge Graph</span>
-                </>
-              )}
+              {label}
             </button>
-          </div>
-        </form>
+          )
+        )}
       </div>
 
-      {/* ——— TAB CONTENT ——— */}
       {activeTab === 'list' ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title">Dokumen Materi Terindeks ({documents.length})</h2>
-            <button
-              onClick={() => navigate('/app/review')}
-              className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
-            >
-              Review Semua Flashcards &rarr;
-            </button>
-          </div>
-
+        <div className="mt-5">
           {loading ? (
-            <div className="py-12 text-center text-xs text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-500" />
-              <span>Memuat materi kuliah...</span>
-            </div>
+            <p className="py-12 text-center text-[13px] text-zinc-400">Loading material…</p>
           ) : documents.length === 0 ? (
             <EmptyDocuments
               action={
-                <p className="text-xs text-slate-400">
-                  Gunakan form di atas untuk mengunggah materi perkuliahan pertama Anda.
+                <p className="text-xs text-zinc-400">
+                  Use the form above to upload your first document.
                 </p>
               }
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {documents.map((doc) => {
-                const createdDate = new Date(doc.created_at).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                });
-                const sizeKb = Math.round(doc.file_size / 1024);
-
-                return (
-                  <div key={doc.id} className="card p-5 space-y-3.5 hover:shadow-elevated transition-all duration-200">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
-                          <FileText className="w-5 h-5 text-brand-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-900 truncate" title={doc.title}>
-                            {doc.title}
-                          </h3>
-                          <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                            {doc.filename} &middot; {sizeKb} KB &middot; {createdDate}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleDelete(doc.id, doc.title)}
-                        className="text-slate-300 hover:text-red-500 p-1 rounded-lg transition-colors"
-                        title="Hapus materi"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Stats badges */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium border border-emerald-100">
-                        {doc.entities_count} Entitas Nodes
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-medium border border-brand-100">
-                        {doc.relations_count} Relasi Edges
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 font-medium border border-violet-100">
-                        {doc.topics_count} Topik RAG
-                      </span>
-                    </div>
-
-                    {/* Summary */}
-                    {doc.summary && (
-                      <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100">
-                        {doc.summary}
+            <div className="list border-t border-zinc-100">
+              {documents.map((doc) => (
+                <article key={doc.id} className="py-5">
+                  <div className="flex items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-[14px] font-medium text-zinc-900 truncate">{doc.title}</h3>
+                      <p className="mt-0.5 text-xs text-zinc-400 truncate">
+                        {doc.filename} · {Math.round(doc.file_size / 1024)} KB ·{' '}
+                        {new Date(doc.created_at).toLocaleDateString('en-US', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
                       </p>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => viewDocGraph(doc.id)}
-                        className="btn-secondary text-xs flex-1 py-2"
-                      >
-                        <Network className="w-3.5 h-3.5 text-brand-500" />
-                        <span>Lihat Graph</span>
-                      </button>
-                      <button
-                        onClick={() => navigate('/app/ask')}
-                        className="btn-secondary text-xs flex-1 py-2"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Tanya AI</span>
-                      </button>
-                      <button
-                        onClick={() => navigate('/app/review')}
-                        className="btn-primary text-xs flex-1 py-2"
-                      >
-                        <Brain className="w-3.5 h-3.5" />
-                        <span>Review</span>
-                      </button>
                     </div>
+                    <button
+                      onClick={() => handleDelete(doc.id, doc.title)}
+                      className="btn-ghost btn-sm text-zinc-300 hover:text-red-600"
+                      title="Delete material"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                );
-              })}
+
+                  {doc.summary && (
+                    <p className="mt-3 text-[13px] leading-relaxed text-zinc-500 line-clamp-3 max-w-prose">
+                      {doc.summary}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
+                    <span>{doc.entities_count} entities</span>
+                    <span>{doc.relations_count} relations</span>
+                    <span>{doc.topics_count} topics</span>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedDocId(doc.id);
+                        setActiveTab('graph');
+                      }}
+                      className="btn-secondary btn-sm"
+                    >
+                      View graph
+                    </button>
+                    <button onClick={() => navigate('/app/ask')} className="btn-secondary btn-sm">
+                      Ask AI
+                    </button>
+                    <button onClick={() => navigate('/app/review')} className="btn-secondary btn-sm">
+                      Review
+                    </button>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </div>
       ) : (
-        /* ——— GRAPH VIEW TAB ——— */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="section-title flex items-center gap-2">
-                <span>Visualisasi Knowledge Graph</span>
-                {selectedDocId ? (
-                  <span className="text-xs font-normal text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">
-                    Filter: {documents.find((d) => d.id === selectedDocId)?.title || 'Dokumen Terpilih'}
-                  </span>
-                ) : (
-                  <span className="text-xs font-normal text-slate-400">
-                    (Semua Materi Kuliah)
-                  </span>
-                )}
-              </h2>
-              <p className="text-xs text-slate-400">
-                Peta relasi konsep antar materi kuliah. Klik dan geser node untuk eksplorasi.
-              </p>
-            </div>
-
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-[13px] text-zinc-500">
+              {selectedTitle ? `Filter: ${selectedTitle}` : 'All material'}
+            </p>
             {selectedDocId && (
               <button
                 onClick={() => setSelectedDocId(undefined)}
-                className="text-xs text-slate-500 hover:text-brand-600 transition-colors"
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-900"
               >
-                Lihat Global Graph &rarr;
+                View global graph
               </button>
             )}
           </div>
 
-          <div className="card overflow-hidden h-[450px]">
+          <div className="mt-3 card overflow-hidden h-[440px]">
             {graphLoading ? (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                <Loader2 className="w-6 h-6 animate-spin text-brand-500 mr-2" />
-                <span>Memuat graf relasi materi...</span>
+              <div className="h-full flex items-center justify-center text-[13px] text-zinc-400">
+                Loading relation graph…
               </div>
             ) : graphData && graphData.entities.length > 0 ? (
               <GraphVisualizer data={graphData} />
             ) : (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-                <Network className="w-10 h-10 text-slate-300 mb-2" />
-                <p className="text-sm font-semibold text-slate-700">Belum ada node Knowledge Graph</p>
-                <p className="text-xs text-slate-400 max-w-sm mt-1">
-                  Unggah file materi perkuliahan PDF untuk mengekstrak entitas dan relasi visual secara otomatis.
+              <div className="h-full flex flex-col items-center justify-center px-8 text-center">
+                <Network className="w-6 h-6 text-zinc-300" strokeWidth={1.5} />
+                <p className="mt-3 text-[13px] font-medium text-zinc-700">No nodes yet</p>
+                <p className="mt-1 max-w-xs text-xs text-zinc-400">
+                  Upload material to extract entities and relations automatically.
                 </p>
               </div>
             )}

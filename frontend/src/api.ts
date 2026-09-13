@@ -9,7 +9,8 @@ import type {
   AcademicTask,
   HeartbeatSummary,
   GatewayStatus,
-  ModelItem
+  ModelItem,
+  AgentNotification
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -48,6 +49,7 @@ export const api = {
     password: string;
     email?: string;
     faculty?: string;
+    university?: string;
     program?: string;
   }): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE}/auth/register`, {
@@ -268,6 +270,14 @@ export const api = {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to fetch agent prompts');
+    return res.json();
+  },
+
+  async getNotifications(limit = 20): Promise<AgentNotification[]> {
+    const res = await fetch(`${API_BASE}/agent/notifications?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch agent notifications');
     return res.json();
   },
 

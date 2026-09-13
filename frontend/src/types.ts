@@ -144,3 +144,13 @@ export interface ModelItem {
   name: string;
   recommended?: boolean;
 }
+
+/** A briefing the agent pushed on its own schedule, without the user asking. */
+export interface AgentNotification {
+  id: string;
+  channel: string;
+  body: string;
+  urgent_tasks_count: number;
+  due_flashcards_count: number;
+  sent_at: string;
+}

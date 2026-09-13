@@ -33,9 +33,9 @@ async def register(req: UserRegisterRequest, db: aiosqlite.Connection = Depends(
         req.nim.strip(),
         req.name.strip(),
         req.email.strip() if req.email else "",
-        req.faculty.strip() if req.faculty else "Fakultas Ilmu Komputer",
-        req.program.strip() if req.program else "Teknik Komputer",
-        req.university.strip() if req.university else "Universitas Brawijaya",
+        req.faculty.strip() if req.faculty else "",
+        req.program.strip() if req.program else "",
+        req.university.strip() if req.university else "",
         pw_hash,
         now
     ))
@@ -54,9 +54,9 @@ async def register(req: UserRegisterRequest, db: aiosqlite.Connection = Depends(
             nim=req.nim.strip(),
             name=req.name.strip(),
             email=req.email.strip() if req.email else "",
-            faculty=req.faculty.strip() if req.faculty else "Fakultas Ilmu Komputer",
-            program=req.program.strip() if req.program else "Teknik Komputer",
-            university=req.university.strip() if req.university else "Universitas Brawijaya",
+            faculty=req.faculty.strip() if req.faculty else "",
+            program=req.program.strip() if req.program else "",
+            university=req.university.strip() if req.university else "",
             created_at=datetime.fromisoformat(now)
         ),
         access_token=access_token,
@@ -90,9 +90,9 @@ async def login(req: UserLoginRequest, db: aiosqlite.Connection = Depends(get_db
             nim=row["nim"],
             name=row["name"],
             email=row["email"] or "",
-            faculty=row["faculty"] or "Fakultas Ilmu Komputer",
-            program=row["program"] or "Teknik Komputer",
-            university=row["university"] or "Universitas Brawijaya",
+            faculty=row["faculty"] or "",
+            program=row["program"] or "",
+            university=row["university"] or "",
             created_at=datetime.fromisoformat(row["created_at"]) if isinstance(row["created_at"], str) else row["created_at"]
         ),
         access_token=access_token,
@@ -122,8 +122,8 @@ async def get_me(
         nim=row["nim"],
         name=row["name"],
         email=row["email"] or "",
-        faculty=row["faculty"] or "Fakultas Ilmu Komputer",
-        program=row["program"] or "Teknik Komputer",
-        university=row["university"] or "Universitas Brawijaya",
+        faculty=row["faculty"] or "",
+        program=row["program"] or "",
+        university=row["university"] or "",
         created_at=datetime.fromisoformat(row["created_at"]) if isinstance(row["created_at"], str) else row["created_at"]
     )

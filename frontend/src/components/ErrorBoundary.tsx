@@ -1,5 +1,4 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -25,43 +24,32 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   render() {
-    if (!this.state.hasError) {
-      return this.props.children;
-    }
+    if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="min-h-screen bg-surface-50 flex items-center justify-center px-6">
-        <div className="max-w-md text-center animate-fade-in">
-          <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-5">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
-          </div>
-
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight mb-2">
-            Terjadi Kesalahan
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <div className="max-w-md w-full animate-fade-in">
+          <p className="eyebrow">Error</p>
+          <h1 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-zinc-900">
+            Something went wrong
           </h1>
-          <p className="text-sm text-slate-500 mb-4">
-            Aplikasi mengalami error yang tidak terduga. Silakan coba muat ulang halaman.
-          </p>
+          <p className="mt-2 muted">The app stopped unexpectedly. Reload the page.</p>
 
           {import.meta.env.DEV && this.state.error && (
-            <div className="text-left bg-slate-900 text-slate-300 rounded-xl p-4 mb-6 text-[11px] font-mono overflow-x-auto max-h-40 overflow-y-auto">
-              <p className="text-red-400 font-semibold mb-1">{this.state.error.name}: {this.state.error.message}</p>
-              <pre className="text-slate-500 whitespace-pre-wrap">{this.state.error.stack}</pre>
-            </div>
+            <pre className="mt-5 max-h-40 overflow-auto rounded-lg bg-zinc-900 p-3.5 text-[11px] leading-relaxed text-zinc-400 whitespace-pre-wrap">
+              <span className="text-red-400">
+                {this.state.error.name}: {this.state.error.message}
+              </span>
+              {'\n'}
+              {this.state.error.stack}
+            </pre>
           )}
 
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="btn-primary text-sm px-5 py-2.5"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Muat Ulang</span>
+          <div className="mt-7 flex gap-2">
+            <button onClick={() => window.location.reload()} className="btn-primary">
+              Reload
             </button>
-            <a href="/" className="btn-secondary text-sm px-5 py-2.5">
-              <Home className="w-4 h-4" />
-              <span>Beranda</span>
-            </a>
+            <a href="/" className="btn-secondary">Home</a>
           </div>
         </div>
       </div>

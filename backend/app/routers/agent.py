@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from typing import Dict, Any, List
 import aiosqlite
-import os
 import time
 import httpx
 from datetime import datetime, timezone
@@ -10,22 +9,86 @@ from backend.app.core.database import get_db
 from backend.app.core.config import settings, BASE_DIR
 from backend.app.models.schemas import AgentChatRequest, AgentChatResponse, GatewayHealthResponse
 from backend.app.services.openclaw_client import openclaw_client
+from backend.app.services import briefing
+from backend.app.core.security import require_user
 
 router = APIRouter(prefix="/api/agent", tags=["OpenClaw Agent & Copilot"])
 
+
+@router.get("/briefing")
+async def get_briefing(
+    commit: bool = False,
+    user_id: str = Depends(require_user),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> Dict[str, Any]:
+    """The proactive half of the loop, called by an OpenClaw Automation on a cron rule.
+
+    Returns `send: false` when there is nothing new, so the scheduled wake stays
+    silent instead of repeating itself. Pass `commit=true` once the message has
+    actually been delivered, to record it and start the next quiet period.
+    """
+    state = await briefing.collect_state(db, user_id)
+    composed = briefing.compose(state)
+    last = await briefing.last_notification(db, user_id)
+    send, reason = briefing.should_send(composed, last, state["now"])
+
+    if send and commit:
+        await briefing.record(db, composed, channel="whatsapp", user_id=user_id)
+
+    return {
+        "send": send,
+        "reason": reason,
+        "committed": bool(send and commit),
+        "body": composed["body"],
+        "urgent_tasks_count": composed["urgent_tasks_count"],
+        "due_flashcards_count": composed["due_flashcards_count"],
+        "deliver_to": settings.notify_whatsapp_to,
+        "checked_at": state["now"].isoformat(),
+    }
+
+
+@router.get("/notifications")
+async def list_notifications(
+    limit: int = 20,
+    user_id: str = Depends(require_user),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """Audit trail of what the agent pushed without being asked."""
+    cur = await db.execute(
+        """
+        SELECT id, channel, body, urgent_tasks_count, due_flashcards_count, sent_at
+        FROM notifications WHERE user_id = ? ORDER BY sent_at DESC LIMIT ?
+        """,
+        (user_id, min(limit, 100)),
+    )
+    return [dict(r) for r in await cur.fetchall()]
+
 @router.post("/chat", response_model=AgentChatResponse)
-async def chat_with_agent(req: AgentChatRequest, db: aiosqlite.Connection = Depends(get_db)):
+async def chat_with_agent(
+    req: AgentChatRequest,
+    user_id: str = Depends(require_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
     context_parts = []
-    
+
     if req.context_mode == "academic_tutor":
-        cur_tasks = await db.execute("SELECT title, course, deadline FROM academic_tasks WHERE status = 'pending' ORDER BY deadline ASC LIMIT 3")
+        cur_tasks = await db.execute(
+            """
+            SELECT title, course, deadline FROM academic_tasks
+            WHERE user_id = ? AND status = 'pending'
+            ORDER BY deadline ASC LIMIT 3
+            """,
+            (user_id,),
+        )
         task_rows = await cur_tasks.fetchall()
         if task_rows:
             tasks_str = ", ".join([f"{t['title']} ({t['course']}, due {t['deadline'][:10]})" for t in task_rows])
             context_parts.append(f"Upcoming Pending Tasks: {tasks_str}")
 
         now_iso = datetime.now(timezone.utc).isoformat()
-        cur_cards = await db.execute("SELECT COUNT(*) FROM flashcards WHERE due <= ?", (now_iso,))
+        cur_cards = await db.execute(
+            "SELECT COUNT(*) FROM flashcards WHERE user_id = ? AND due <= ?", (user_id, now_iso)
+        )
         due_count = (await cur_cards.fetchone())[0]
         context_parts.append(f"FSRS-6 Flashcards Due for Review Today: {due_count}")
 
@@ -45,7 +108,7 @@ async def chat_with_agent(req: AgentChatRequest, db: aiosqlite.Connection = Depe
     )
 
 @router.get("/gateway-status", response_model=GatewayHealthResponse)
-async def get_gateway_status():
+async def get_gateway_status(user_id: str = Depends(require_user)):
     status_info = await openclaw_client.get_gateway_status()
     code = status_info.get("status_code")
     uptime = f"HTTP {code}" if code is not None else None
@@ -59,7 +122,7 @@ async def get_gateway_status():
     )
 
 @router.get("/models")
-async def list_available_models() -> List[Dict[str, Any]]:
+async def list_available_models(user_id: str = Depends(require_user)) -> List[Dict[str, Any]]:
     return [
         {"id": "9router/oc/hy3-free", "name": "OpenClaw HY3 Free (200k context)", "recommended": True},
         {"id": "openrouter/nvidia/nemotron-3.5-lightning:free", "name": "Nvidia Nemotron 3.5 Lightning (Free)"},
@@ -69,7 +132,7 @@ async def list_available_models() -> List[Dict[str, Any]]:
     ]
 
 @router.get("/prompts")
-async def get_agent_prompts() -> Dict[str, str]:
+async def get_agent_prompts(user_id: str = Depends(require_user)) -> Dict[str, str]:
     config_dir = BASE_DIR.parent / "openclaw_config"
     prompts = {}
     files = ["SOUL.md", "AGENTS.md", "HEARTBEAT.md", "TOOLS.md"]
@@ -82,11 +145,14 @@ async def get_agent_prompts() -> Dict[str, str]:
     return prompts
 
 @router.get("/ping")
-async def ping_gateway() -> Dict[str, Any]:
+async def ping_gateway(user_id: str = Depends(require_user)) -> Dict[str, Any]:
     start_time = time.time()
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{settings.openclaw_gateway_url}/health")
+            resp = await client.get(
+                f"{settings.openclaw_gateway_url}/v1/models",
+                headers={"Authorization": f"Bearer {settings.openclaw_gateway_token}"},
+            )
             latency_ms = int((time.time() - start_time) * 1000)
             return {
                 "success": resp.status_code == 200,

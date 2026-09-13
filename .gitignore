@@ -45,3 +45,6 @@ Thumbs.db
 logs/
 *.log
 scratch/
+
+# Local secrets cache (generated, never commit)
+.jwt_secret

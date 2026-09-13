@@ -13,6 +13,7 @@ interface AuthContextType {
     password: string;
     email?: string;
     faculty?: string;
+    university?: string;
     program?: string;
   }) => Promise<boolean>;
   logout: () => void;
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     email?: string;
     faculty?: string;
+    university?: string;
     program?: string;
   }): Promise<boolean> => {
     try {

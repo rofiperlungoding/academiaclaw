@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Upload, Trash2, Search, FileText, Sparkles, Layers } from 'lucide-react';
+import { Upload, Trash2 } from 'lucide-react';
 import type { DocumentItem, KnowledgeGraphData } from '../../types';
 import { api } from '../../api';
 import { GraphVisualizer } from '../../components/GraphVisualizer';
+import { useToast } from '../../components/Toast';
 
 export function KnowledgePage() {
+  const { success, error } = useToast();
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [graphData, setGraphData] = useState<KnowledgeGraphData | null>(null);
@@ -17,8 +19,7 @@ export function KnowledgePage() {
 
   const fetchDocs = async () => {
     try {
-      const data = await api.getDocuments();
-      setDocs(data);
+      setDocs(await api.getDocuments());
     } catch {
       setDocs([]);
     }
@@ -26,8 +27,7 @@ export function KnowledgePage() {
 
   const fetchGraph = async (docId?: string | null) => {
     try {
-      const data = await api.getGraph(docId || undefined);
-      setGraphData(data);
+      setGraphData(await api.getGraph(docId || undefined));
     } catch {
       setGraphData(null);
     }
@@ -35,7 +35,6 @@ export function KnowledgePage() {
 
   useEffect(() => {
     fetchDocs();
-    fetchGraph();
   }, []);
 
   useEffect(() => {
@@ -45,42 +44,34 @@ export function KnowledgePage() {
   const processFile = async (file: File) => {
     setUploading(true);
     try {
-      await api.uploadDocument(file);
+      const doc = await api.uploadDocument(file);
+      success(`"${doc.title}" indexed.`);
       await fetchDocs();
       await fetchGraph(selectedDocId);
-    } catch (err: any) {
-      alert(err.message || 'Upload dan ekstraksi graph gagal.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Upload and graph extraction failed.');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) await processFile(file);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) await processFile(file);
-  };
-
   const handleDelete = async (docId: string) => {
-    if (!confirm('Hapus dokumen ini? Semua entitas graph, topik, dan flashcard terkait akan dihapus.')) return;
+    if (!confirm('Delete this document? Its graph entities, topics, and flashcards go too.')) {
+      return;
+    }
     try {
       await api.deleteDocument(docId);
+      success('Document deleted.');
       if (selectedDocId === docId) setSelectedDocId(null);
-      fetchDocs();
-      fetchGraph(null);
+      await fetchDocs();
+      await fetchGraph(selectedDocId === docId ? null : selectedDocId);
     } catch {
-      alert('Gagal menghapus dokumen.');
+      error('Could not delete the document.');
     }
   };
 
-  const handleAskRag = async (e: React.FormEvent) => {
+  const askRag = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ragQuery.trim()) return;
     setRagLoading(true);
@@ -88,7 +79,7 @@ export function KnowledgePage() {
       const res = await api.askRag(ragQuery, selectedDocId ? [selectedDocId] : undefined);
       setRagResult(res.answer);
     } catch {
-      setRagResult('Gagal mengeksekusi query Dual-Level RAG. Pastikan backend aktif.');
+      setRagResult('Dual-level RAG query failed. Check that the backend is running.');
     } finally {
       setRagLoading(false);
     }
@@ -97,183 +88,156 @@ export function KnowledgePage() {
   const selectedDoc = docs.find((d) => d.id === selectedDocId);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="animate-fade-in">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>Knowledge Studio & LightRAG</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-100 font-medium">
-              Dual-Level Graph
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Ekstraksi otomatis entitas, relasi, topik makro, flashcard FSRS-6, dan agenda tugas dari PDF/dokumen kuliah.
+          <h1 className="page-title">Knowledge</h1>
+          <p className="mt-1 muted max-w-lg">
+            Extract entities, relations, macro topics, flashcards, and deadlines from course documents.
           </p>
         </div>
-
-        <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf,.md,.txt"
-            onChange={handleUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-medium transition-colors shadow-sm shadow-brand-200"
-          >
-            <Upload className="w-4 h-4" />
-            <span>{uploading ? 'Mengekstrak Dokumen...' : 'Upload Materi Kuliah'}</span>
-          </button>
-        </div>
-      </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".pdf,.md,.txt"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) processFile(f);
+          }}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="btn-primary btn-sm"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          {uploading ? 'Extracting…' : 'Upload material'}
+        </button>
+      </header>
 
       <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
         onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
-          isDragOver
-            ? 'border-brand-400 bg-brand-50/50'
-            : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f) processFile(f);
+        }}
+        className={`mt-6 rounded-xl border border-dashed py-6 text-center text-[13px] transition-colors ${
+          isDragOver ? 'border-zinc-400 bg-zinc-50 text-zinc-700' : 'border-zinc-200 text-zinc-400'
         }`}
       >
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-          <Upload className="w-4 h-4 text-brand-500" />
-          <span>Drag and drop file PDF atau slide kuliah di sini untuk auto-ekstraksi LightRAG & Flashcard.</span>
-        </div>
+        Drop a PDF or slide deck here to auto-extract
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Dokumen Terdaftar ({docs.length})
-            </h3>
+      <div className="mt-8 grid gap-8 lg:grid-cols-5">
+        <section className="lg:col-span-2">
+          <div className="flex items-baseline justify-between">
+            <h2 className="section-title">Documents ({docs.length})</h2>
             {selectedDocId && (
               <button
                 onClick={() => setSelectedDocId(null)}
-                className="text-[11px] text-brand-600 hover:underline"
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-900"
               >
-                Reset Filter
+                Reset filter
               </button>
             )}
           </div>
 
-          <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
+          <div className="mt-3 list border-t border-zinc-100 max-h-[420px] overflow-y-auto">
             <button
               onClick={() => setSelectedDocId(null)}
-              className={`w-full text-left px-3.5 py-3 rounded-xl text-xs transition-all flex items-center justify-between ${
-                selectedDocId === null
-                  ? 'bg-brand-50 text-brand-900 font-semibold border border-brand-200 shadow-2xs'
-                  : 'bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50'
+              className={`w-full text-left py-3 text-[13px] ${
+                selectedDocId === null ? 'font-medium text-zinc-900' : 'text-zinc-500 hover:text-zinc-900'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-brand-500" />
-                <span>Seluruh Graf Pengetahuan Global</span>
-              </div>
-              <span className="text-[10px] font-mono text-slate-400">All</span>
+              Entire global graph
             </button>
 
             {docs.map((doc) => (
-              <div
-                key={doc.id}
-                onClick={() => setSelectedDocId(doc.id)}
-                className={`p-3.5 rounded-xl text-xs transition-all cursor-pointer border ${
-                  selectedDocId === doc.id
-                    ? 'bg-brand-50/70 text-brand-950 border-brand-200 shadow-xs'
-                    : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 shrink-0 text-brand-500" />
-                    <p className="font-medium truncate">{doc.title}</p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(doc.id); }}
-                    className="text-slate-300 hover:text-red-500 transition-colors shrink-0 p-0.5"
-                    title="Hapus Dokumen"
+              <div key={doc.id} className="flex items-start gap-3 py-3 group">
+                <button
+                  onClick={() => setSelectedDocId(doc.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p
+                    className={`text-[13px] truncate ${
+                      selectedDocId === doc.id
+                        ? 'font-medium text-zinc-900'
+                        : 'text-zinc-700 group-hover:text-zinc-900'
+                    }`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2 text-[10px] font-mono text-slate-500">
-                  <span className="bg-white/80 px-1.5 py-0.5 rounded border border-slate-200/60">
-                    {doc.entities_count} Entitas
-                  </span>
-                  <span className="bg-white/80 px-1.5 py-0.5 rounded border border-slate-200/60">
-                    {doc.relations_count} Relasi
-                  </span>
-                  <span className="bg-white/80 px-1.5 py-0.5 rounded border border-slate-200/60">
-                    {doc.topics_count} Topik
-                  </span>
-                </div>
+                    {doc.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">
+                    {doc.entities_count} entities · {doc.relations_count} relations · {doc.topics_count} topics
+                  </p>
+                </button>
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  className="shrink-0 text-zinc-200 hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  aria-label="Delete document"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
 
             {docs.length === 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-xs text-slate-400">
-                Belum ada dokumen yang diupload.
+              <p className="py-8 text-center text-[13px] text-zinc-400">No documents yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="lg:col-span-3">
+          <h2 className="section-title">Knowledge graph</h2>
+          <div className="mt-3 card overflow-hidden h-[420px]">
+            {graphData && graphData.entities.length > 0 ? (
+              <GraphVisualizer data={graphData} />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center px-8 text-center">
+                <p className="text-[13px] font-medium text-zinc-700">Empty graph</p>
+                <p className="mt-1 max-w-xs text-xs text-zinc-400">
+                  Upload a document to see concept entities and their semantic links.
+                </p>
               </div>
             )}
           </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs flex flex-col" style={{ minHeight: '440px' }}>
-          {graphData && (graphData.entities.length > 0 || graphData.relations.length > 0) ? (
-            <GraphVisualizer data={graphData} />
-          ) : (
-            <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
-              <Layers className="w-10 h-10 text-slate-200 mb-3" />
-              <p className="text-sm font-medium text-slate-600">Graf Pengetahuan Kosong</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                Upload dokumen materi kuliah untuk melihat visualisasi entitas konsep dan hubungan semantiknya.
-              </p>
-            </div>
-          )}
-        </div>
+        </section>
       </div>
 
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <Search className="w-4 h-4 text-brand-600" />
-            <span>Ask Dual-Level RAG Engine</span>
-          </h3>
-          <span className="text-[10px] font-mono text-slate-400">
-            {selectedDocId ? `Target: ${selectedDoc?.title || 'Selected Doc'}` : 'Target: Seluruh Knowledge Base'}
+      <section className="mt-10">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="section-title">Dual-level RAG query</h2>
+          <span className="text-[11px] text-zinc-400">
+            Target: {selectedDoc?.title ?? 'entire knowledge base'}
           </span>
         </div>
 
-        <form onSubmit={handleAskRag} className="flex gap-2">
+        <form onSubmit={askRag} className="mt-3 flex gap-2">
           <input
-            type="text"
             value={ragQuery}
             onChange={(e) => setRagQuery(e.target.value)}
-            placeholder="Tanyakan konsep mendalam, perbandingan algoritma, atau relasi entitas..."
-            className="flex-1 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50 shadow-xs"
+            placeholder="Compare two algorithms, or ask how entities relate…"
+            className="input-field flex-1"
+            aria-label="Query RAG"
           />
-          <button
-            type="submit"
-            disabled={ragLoading || !ragQuery.trim()}
-            className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm shadow-brand-200 flex items-center gap-1.5 shrink-0"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{ragLoading ? 'Mencari di Graf...' : 'Query RAG'}</span>
+          <button type="submit" disabled={ragLoading || !ragQuery.trim()} className="btn-primary">
+            {ragLoading ? 'Searching…' : 'Query'}
           </button>
         </form>
 
         {ragResult && (
-          <div className="mt-3 p-4 bg-slate-50 rounded-xl text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap border border-slate-200/80 shadow-2xs">
+          <div className="mt-4 rounded-xl bg-zinc-50 border border-zinc-100 p-4 text-[13px] leading-relaxed text-zinc-700 whitespace-pre-wrap">
             {ragResult}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

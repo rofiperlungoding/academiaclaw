@@ -1,33 +1,37 @@
 import { useEffect, useState } from 'react';
-import { Wifi, WifiOff, Server, Activity, FileCode, CheckCircle2 } from 'lucide-react';
 import type { GatewayStatus, ModelItem } from '../../types';
 import { api } from '../../api';
+
+const PROMPT_FILES = ['SOUL.md', 'AGENTS.md', 'HEARTBEAT.md', 'TOOLS.md'];
+
+interface PingResult {
+  success: boolean;
+  latency_ms: number;
+  status_code?: number;
+}
 
 export function SettingsPage() {
   const [gateway, setGateway] = useState<GatewayStatus | null>(null);
   const [models, setModels] = useState<ModelItem[]>([]);
   const [prompts, setPrompts] = useState<Record<string, string>>({});
-  const [selectedPrompt, setSelectedPrompt] = useState<string>('SOUL.md');
-  const [pingResult, setPingResult] = useState<{ success: boolean; latency_ms: number; status_code?: number } | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState('SOUL.md');
+  const [pingResult, setPingResult] = useState<PingResult | null>(null);
   const [pinging, setPinging] = useState(false);
 
   useEffect(() => {
-    Promise.allSettled([
-      api.getGatewayStatus(),
-      api.getModels(),
-      api.getPrompts(),
-    ]).then(([g, m, p]) => {
-      if (g.status === 'fulfilled') setGateway(g.value);
-      if (m.status === 'fulfilled') setModels(m.value);
-      if (p.status === 'fulfilled') setPrompts(p.value);
-    });
+    Promise.allSettled([api.getGatewayStatus(), api.getModels(), api.getPrompts()]).then(
+      ([g, m, p]) => {
+        if (g.status === 'fulfilled') setGateway(g.value);
+        if (m.status === 'fulfilled') setModels(m.value);
+        if (p.status === 'fulfilled') setPrompts(p.value);
+      }
+    );
   }, []);
 
-  const handleTestPing = async () => {
+  const ping = async () => {
     setPinging(true);
     try {
-      const res = await api.pingGateway();
-      setPingResult(res);
+      setPingResult(await api.pingGateway());
     } catch {
       setPingResult({ success: false, latency_ms: 0 });
     } finally {
@@ -35,120 +39,67 @@ export function SettingsPage() {
     }
   };
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>System Settings & Architecture</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200">
-              OpenClaw Ecosystem
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Konfigurasi konektivitas OpenClaw Gateway, inspeksi prompt workspace, dan model routing.
-          </p>
-        </div>
+  const specs = [
+    ['Status', gateway?.gateway_reachable ? 'Reachable' : 'Offline'],
+    ['Endpoint', gateway?.gateway_url ?? '—'],
+    ['Default agent', gateway?.active_agent ?? '—'],
+    ['Primary model', gateway?.active_model ?? '—'],
+  ];
 
-        <button
-          onClick={handleTestPing}
-          disabled={pinging}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs"
-        >
-          <Activity className="w-3.5 h-3.5 text-brand-600" />
-          <span>{pinging ? 'Testing Gateway...' : 'Ping Gateway'}</span>
+  return (
+    <div className="animate-fade-in">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="page-title">Settings</h1>
+          <p className="mt-1 muted">Gateway connectivity, workspace prompts, and model routing.</p>
+        </div>
+        <button onClick={ping} disabled={pinging} className="btn-secondary btn-sm">
+          {pinging ? 'Testing…' : 'Ping gateway'}
         </button>
-      </div>
+      </header>
 
       {pingResult && (
-        <div className={`p-4 rounded-2xl border text-xs flex items-center justify-between animate-scale-in ${
-          pingResult.success
-            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-            : 'bg-red-50/80 border-red-200 text-red-900'
-        }`}>
-          <div className="flex items-center gap-2">
-            {pingResult.success ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            ) : (
-              <WifiOff className="w-4 h-4 text-red-600" />
-            )}
-            <span className="font-medium">
-              {pingResult.success
-                ? `Gateway Online - Respons diterima dalam ${pingResult.latency_ms} ms (HTTP ${pingResult.status_code})`
-                : 'Gateway Offline atau Timeout'}
-            </span>
-          </div>
-          <span className="font-mono text-[10px]">
-            Target: {gateway?.gateway_url || 'http://103.30.146.109:18789'}
-          </span>
-        </div>
+        <p
+          role="status"
+          className={`mt-5 text-[13px] animate-fade-in ${
+            pingResult.success ? 'text-emerald-700' : 'text-red-600'
+          }`}
+        >
+          {pingResult.success
+            ? `Gateway online · ${pingResult.latency_ms} ms · HTTP ${pingResult.status_code}`
+            : 'Gateway offline or timed out.'}
+        </p>
       )}
 
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-xs">
-        <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-          <Server className="w-4 h-4 text-brand-600" />
-          <span>OpenClaw Gateway Specifications</span>
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-mono uppercase mb-1">Status Koneksi</p>
-            <div className="flex items-center gap-2">
-              {gateway?.gateway_reachable ? (
-                <Wifi className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <WifiOff className="w-4 h-4 text-red-400" />
-              )}
-              <span className={`text-xs font-semibold ${gateway?.gateway_reachable ? 'text-emerald-700' : 'text-red-600'}`}>
-                {gateway?.gateway_reachable ? 'Reachable & Online' : 'Standby / Offline'}
-              </span>
+      <section className="mt-9">
+        <h2 className="section-title">Gateway</h2>
+        <dl className="mt-3 list border-t border-zinc-100">
+          {specs.map(([k, v]) => (
+            <div key={k} className="flex items-baseline gap-4 py-2.5">
+              <dt className="w-32 shrink-0 text-xs text-zinc-400">{k}</dt>
+              <dd className="text-[13px] text-zinc-800 truncate">{v}</dd>
             </div>
-          </div>
+          ))}
+        </dl>
+      </section>
 
-          <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-mono uppercase mb-1">Gateway Endpoint</p>
-            <p className="text-xs font-mono text-slate-800 font-medium truncate">
-              {gateway?.gateway_url || 'http://103.30.146.109:18789'}
-            </p>
-          </div>
-
-          <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-mono uppercase mb-1">Default Active Agent</p>
-            <p className="text-xs text-slate-800 font-medium truncate">
-              {gateway?.active_agent || 'main'}
-            </p>
-          </div>
-
-          <div className="bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
-            <p className="text-[10px] text-slate-400 font-mono uppercase mb-1">Primary LLM Model</p>
-            <p className="text-xs font-mono text-slate-800 font-medium truncate">
-              {gateway?.active_model || '9router/oc/hy3-free'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      <section className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-indigo-600" />
-              <span>OpenClaw Workspace Prompt Configuration</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              File kepribadian, agent profile, heartbeat cron, dan tools yang disinkronkan ke OpenClaw workspace.
+            <h2 className="section-title">Workspace prompts</h2>
+            <p className="mt-1 text-xs text-zinc-400">
+              Persona, agent profile, heartbeat cron, and tool declarations.
             </p>
           </div>
-
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-            {['SOUL.md', 'AGENTS.md', 'HEARTBEAT.md', 'TOOLS.md'].map((filename) => (
+          <div className="flex gap-0.5">
+            {PROMPT_FILES.map((filename) => (
               <button
                 key={filename}
                 onClick={() => setSelectedPrompt(filename)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
+                className={`h-7 px-2 rounded-md text-[11px] font-medium transition-colors ${
                   selectedPrompt === filename
-                    ? 'bg-white text-brand-700 shadow-2xs font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-zinc-100 text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-900'
                 }`}
               >
                 {filename}
@@ -157,36 +108,29 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-slate-900 text-slate-100 rounded-xl p-4 font-mono text-xs max-h-72 overflow-y-auto leading-relaxed shadow-inner">
-          <pre className="whitespace-pre-wrap">
-            {prompts[selectedPrompt] || 'Memuat konten file prompt...'}
-          </pre>
-        </div>
-      </div>
+        <pre className="mt-4 max-h-80 overflow-auto rounded-lg bg-zinc-900 p-4 text-[11px] leading-relaxed text-zinc-300 whitespace-pre-wrap">
+          {prompts[selectedPrompt] || 'Loading prompt file…'}
+        </pre>
+      </section>
 
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 space-y-3 shadow-xs">
-        <h2 className="text-sm font-semibold text-slate-900">
-          Available AI LLM Models (OpenRouter & 9Router)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {models.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between p-3 rounded-xl bg-slate-50/80 border border-slate-100"
-            >
-              <div>
-                <p className="text-xs font-medium text-slate-800">{m.name}</p>
-                <p className="text-[10px] font-mono text-slate-400 mt-0.5">{m.id}</p>
+      <section className="mt-10">
+        <h2 className="section-title">Available models</h2>
+        <div className="mt-3 list border-t border-zinc-100">
+          {models.length === 0 ? (
+            <p className="py-4 text-[13px] text-zinc-400">No models registered.</p>
+          ) : (
+            models.map((m) => (
+              <div key={m.id} className="flex items-baseline gap-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-zinc-900 truncate">{m.name}</p>
+                  <p className="mt-0.5 text-xs text-zinc-400 truncate">{m.id}</p>
+                </div>
+                {m.recommended && <span className="badge-neutral shrink-0">default</span>}
               </div>
-              {m.recommended && (
-                <span className="text-[10px] font-medium text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-100 font-mono">
-                  Default
-                </span>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

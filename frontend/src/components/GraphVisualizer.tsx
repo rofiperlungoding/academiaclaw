@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { KnowledgeGraphData } from '../types';
-import { ZoomIn, ZoomOut, RefreshCw, Layers } from 'lucide-react';
+import { ZoomIn, ZoomOut, RefreshCw, X } from 'lucide-react';
 
 interface GraphVisualizerProps {
   data: KnowledgeGraphData;
@@ -24,48 +24,57 @@ interface EdgeData {
   source: NodeData;
   target: NodeData;
   relation: string;
-  weight: number;
 }
 
-const getColorForType = (type: string): string => {
-  switch (type.toLowerCase()) {
-    case 'algorithm': return '#3B82F6';
-    case 'hardware':
-    case 'architecture': return '#8B5CF6';
-    case 'formula': return '#EF4444';
-    case 'topic': return '#F59E0B';
-    default: return '#10B981';
-  }
+const W = 900;
+const H = 400;
+
+/** Muted palette — readable on white without shouting. */
+const TYPE_COLORS: Record<string, string> = {
+  algorithm: '#4F46E5',
+  architecture: '#0E7490',
+  hardware: '#0E7490',
+  formula: '#B45309',
+  topic: '#7C3AED',
 };
+const colorFor = (type: string) => TYPE_COLORS[type.toLowerCase()] ?? '#52525B';
 
 export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ data, onSelectNode }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<NodeData | null>(null);
-  const [zoom, setZoom] = useState<number>(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDraggingCanvas, setIsDraggingCanvas] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [draggedNode, setDraggedNode] = useState<NodeData | null>(null);
+  const [zoom, setZoom] = useState(1);
 
+  // Visual/interaction state lives in refs so the render loop never restarts.
   const nodesRef = useRef<NodeData[]>([]);
   const edgesRef = useRef<EdgeData[]>([]);
-  const animFrameRef = useRef<number | null>(null);
+  const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const selectedRef = useRef<NodeData | null>(null);
+  const hoveredRef = useRef<NodeData | null>(null);
+  const draggedRef = useRef<NodeData | null>(null);
+  const canvasDragRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const width = 800;
-    const height = 400;
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  useEffect(() => {
     const nodeMap = new Map<string, NodeData>();
 
     data.entities.forEach((ent, i) => {
       const angle = (i / Math.max(1, data.entities.length)) * Math.PI * 2;
       const dist = 120 + (i % 3) * 35;
       nodeMap.set(ent.name, {
-        id: ent.id, name: ent.name, type: ent.entity_type, desc: ent.description,
-        x: width / 2 + Math.cos(angle) * dist,
-        y: height / 2 + Math.sin(angle) * dist,
-        vx: 0, vy: 0, radius: 16,
-        color: getColorForType(ent.entity_type),
+        id: ent.id,
+        name: ent.name,
+        type: ent.entity_type,
+        desc: ent.description,
+        x: W / 2 + Math.cos(angle) * dist,
+        y: H / 2 + Math.sin(angle) * dist,
+        vx: 0,
+        vy: 0,
+        radius: 6,
+        color: colorFor(ent.entity_type),
       });
     });
 
@@ -73,203 +82,231 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ data, onSelect
     data.relations.forEach((rel) => {
       const s = nodeMap.get(rel.source_name);
       const t = nodeMap.get(rel.target_name);
-      if (s && t) edges.push({ source: s, target: t, relation: rel.relation_type, weight: rel.weight });
+      if (s && t) edges.push({ source: s, target: t, relation: rel.relation_type });
     });
 
     nodesRef.current = Array.from(nodeMap.values());
     edgesRef.current = edges;
+    setSelectedNode(null);
+    selectedRef.current = null;
   }, [data]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
-    let isRunning = true;
+    let frame = 0;
 
     const render = () => {
       const nodes = nodesRef.current;
       const edges = edgesRef.current;
-      const width = canvas.width;
-      const height = canvas.height;
 
+      // ponytail: O(n^2) repulsion. Fine under ~200 nodes; switch to a quadtree past that.
       nodes.forEach((n1, i) => {
         nodes.forEach((n2, j) => {
           if (i >= j) return;
           const dx = n2.x - n1.x;
           const dy = n2.y - n1.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const dist = Math.hypot(dx, dy) || 1;
           if (dist < 160) {
-            const force = (160 - dist) / dist * 0.07;
-            n1.vx -= dx * force; n1.vy -= dy * force;
-            n2.vx += dx * force; n2.vy += dy * force;
+            const force = ((160 - dist) / dist) * 0.07;
+            n1.vx -= dx * force;
+            n1.vy -= dy * force;
+            n2.vx += dx * force;
+            n2.vy += dy * force;
           }
         });
-        n1.vx += (width / 2 - n1.x) * 0.003;
-        n1.vy += (height / 2 - n1.y) * 0.003;
+        n1.vx += (W / 2 - n1.x) * 0.003;
+        n1.vy += (H / 2 - n1.y) * 0.003;
       });
 
       edges.forEach((edge) => {
         const dx = edge.target.x - edge.source.x;
         const dy = edge.target.y - edge.source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const spring = (dist - 100) * 0.012;
-        edge.source.vx += (dx / dist) * spring; edge.source.vy += (dy / dist) * spring;
-        edge.target.vx -= (dx / dist) * spring; edge.target.vy -= (dy / dist) * spring;
+        const dist = Math.hypot(dx, dy) || 1;
+        const spring = (dist - 110) * 0.012;
+        edge.source.vx += (dx / dist) * spring;
+        edge.source.vy += (dy / dist) * spring;
+        edge.target.vx -= (dx / dist) * spring;
+        edge.target.vy -= (dy / dist) * spring;
       });
 
       nodes.forEach((node) => {
-        if (node === draggedNode) return;
-        node.vx *= 0.88; node.vy *= 0.88;
-        node.x += node.vx; node.y += node.vy;
-        node.x = Math.max(30, Math.min(width - 30, node.x));
-        node.y = Math.max(30, Math.min(height - 30, node.y));
+        if (node === draggedRef.current) return;
+        node.vx *= 0.88;
+        node.vy *= 0.88;
+        node.x = Math.max(30, Math.min(W - 30, node.x + node.vx));
+        node.y = Math.max(24, Math.min(H - 24, node.y + node.vy));
       });
 
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, W, H);
       ctx.save();
-      ctx.translate(pan.x, pan.y);
-      ctx.scale(zoom, zoom);
+      ctx.translate(panRef.current.x, panRef.current.y);
+      ctx.scale(zoomRef.current, zoomRef.current);
+
+      const active = selectedRef.current || hoveredRef.current;
 
       edges.forEach((edge) => {
+        const touched =
+          active && (edge.source.name === active.name || edge.target.name === active.name);
         ctx.beginPath();
         ctx.moveTo(edge.source.x, edge.source.y);
         ctx.lineTo(edge.target.x, edge.target.y);
-        ctx.strokeStyle = '#CBD5E1';
+        ctx.strokeStyle = touched ? '#A1A1AA' : '#E4E4E7';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        const midX = (edge.source.x + edge.target.x) / 2;
-        const midY = (edge.source.y + edge.target.y) / 2;
-        ctx.fillStyle = '#94A3B8';
-        ctx.font = '9px monospace';
-        ctx.fillText(edge.relation, midX + 4, midY - 4);
+        if (touched) {
+          ctx.fillStyle = '#A1A1AA';
+          ctx.font = '9px Inter, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            edge.relation,
+            (edge.source.x + edge.target.x) / 2,
+            (edge.source.y + edge.target.y) / 2 - 5
+          );
+        }
       });
 
       nodes.forEach((node) => {
-        const isSelected = selectedNode?.name === node.name;
-        const isHovered = hoveredNode?.name === node.name;
-
-        if (isSelected || isHovered) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
-          ctx.fillStyle = node.color + '18';
-          ctx.fill();
-        }
+        const isActive = active?.name === node.name;
 
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, isActive ? node.radius + 1.5 : node.radius, 0, Math.PI * 2);
         ctx.fillStyle = node.color;
-        ctx.shadowColor = node.color;
-        ctx.shadowBlur = isSelected || isHovered ? 12 : 0;
         ctx.fill();
-        ctx.shadowBlur = 0;
-
-        ctx.lineWidth = isSelected ? 2.5 : 1;
-        ctx.strokeStyle = isSelected ? '#0F172A' : '#E2E8F0';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#FFFFFF';
         ctx.stroke();
 
-        ctx.fillStyle = '#0F172A';
-        ctx.font = isSelected ? 'bold 11px Inter, sans-serif' : '10px Inter, sans-serif';
+        ctx.fillStyle = isActive ? '#18181B' : '#71717A';
+        ctx.font = `${isActive ? '600 ' : ''}10px Inter, system-ui, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(node.name, node.x, node.y + node.radius + 14);
+        ctx.fillText(node.name, node.x, node.y + node.radius + 13);
       });
 
       ctx.restore();
-
-      if (isRunning) animFrameRef.current = requestAnimationFrame(render);
+      frame = requestAnimationFrame(render);
     };
 
-    animFrameRef.current = requestAnimationFrame(render);
-    return () => { isRunning = false; if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, [pan, zoom, draggedNode, selectedNode, hoveredNode]);
+    frame = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  /** Canvas is a fixed 900x400 coordinate space stretched by CSS — rescale pointer coords. */
+  const toGraphCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sx = W / rect.width;
+    const sy = H / rect.height;
+    return {
+      x: ((e.clientX - rect.left) * sx - panRef.current.x) / zoomRef.current,
+      y: ((e.clientY - rect.top) * sy - panRef.current.y) / zoomRef.current,
+    };
+  };
+
+  const nodeAt = (x: number, y: number) =>
+    nodesRef.current.find((n) => Math.hypot(n.x - x, n.y - y) <= n.radius + 8) ?? null;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left - pan.x) / zoom;
-    const mouseY = (e.clientY - rect.top - pan.y) / zoom;
-    const clicked = nodesRef.current.find((n) => Math.sqrt((n.x - mouseX) ** 2 + (n.y - mouseY) ** 2) <= n.radius + 6);
+    const { x, y } = toGraphCoords(e);
+    const clicked = nodeAt(x, y);
     if (clicked) {
-      setDraggedNode(clicked); setSelectedNode(clicked);
-      if (onSelectNode) onSelectNode(clicked.name);
+      draggedRef.current = clicked;
+      selectedRef.current = clicked;
+      setSelectedNode(clicked);
+      onSelectNode?.(clicked.name);
     } else {
-      setIsDraggingCanvas(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      canvasDragRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left - pan.x) / zoom;
-    const mouseY = (e.clientY - rect.top - pan.y) / zoom;
-    if (draggedNode) { draggedNode.x = mouseX; draggedNode.y = mouseY; }
-    else if (isDraggingCanvas) { setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); }
-    else {
-      const h = nodesRef.current.find((n) => Math.sqrt((n.x - mouseX) ** 2 + (n.y - mouseY) ** 2) <= n.radius + 6);
-      setHoveredNode(h || null);
+    const { x, y } = toGraphCoords(e);
+    if (draggedRef.current) {
+      draggedRef.current.x = x;
+      draggedRef.current.y = y;
+    } else if (canvasDragRef.current) {
+      panRef.current = {
+        x: e.clientX - canvasDragRef.current.x,
+        y: e.clientY - canvasDragRef.current.y,
+      };
+    } else {
+      hoveredRef.current = nodeAt(x, y);
     }
   };
 
-  const handleMouseUp = () => { setDraggedNode(null); setIsDraggingCanvas(false); };
-  const handleResetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const handleMouseUp = () => {
+    draggedRef.current = null;
+    canvasDragRef.current = null;
+  };
+
+  const reset = () => {
+    setZoom(1);
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
+  };
+
+  const closeDetail = () => {
+    setSelectedNode(null);
+    selectedRef.current = null;
+  };
 
   return (
     <div className="relative w-full h-full">
-      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-200 text-xs shadow-sm">
-        <Layers className="w-3.5 h-3.5 text-brand-500" />
-        <span className="text-slate-600 font-medium">Knowledge Graph</span>
-        <span className="text-slate-300">|</span>
-        <span className="text-emerald-600">{data.entities.length} Nodes</span>
-        <span className="text-slate-300">&middot;</span>
-        <span className="text-brand-600">{data.relations.length} Edges</span>
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2.5 text-[11px] text-zinc-400">
+        <span>{data.entities.length} nodes</span>
+        <span>{data.relations.length} edges</span>
       </div>
 
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur-md p-1 rounded-lg border border-slate-200 shadow-sm">
-        <button onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
-          className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-colors">
-          <ZoomIn className="w-4 h-4" />
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5">
+        <button
+          onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+          className="btn-ghost btn-sm"
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
-          className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-colors">
-          <ZoomOut className="w-4 h-4" />
+        <button
+          onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
+          className="btn-ghost btn-sm"
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
         </button>
-        <button onClick={handleResetZoom}
-          className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-colors">
-          <RefreshCw className="w-4 h-4" />
+        <button onClick={reset} className="btn-ghost btn-sm" aria-label="Reset view">
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
       <canvas
-        ref={canvasRef} width={900} height={400}
-        onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-        className="w-full h-[400px] cursor-grab active:cursor-grabbing block bg-slate-50"
+        ref={canvasRef}
+        width={W}
+        height={H}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        className="block w-full h-full cursor-grab active:cursor-grabbing"
       />
 
       {selectedNode && (
-        <div className="absolute bottom-3 left-3 right-3 z-10 bg-white/95 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-elevated flex items-start justify-between gap-3 animate-fade-in">
-          <div className="flex items-start gap-3">
-            <div className="w-3.5 h-3.5 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: selectedNode.color }} />
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-slate-900 text-sm">{selectedNode.name}</h4>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-mono border border-slate-200">
-                  {selectedNode.type}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-xl">
-                {selectedNode.desc || 'No additional description available.'}
-              </p>
-            </div>
+        <div className="absolute bottom-3 left-3 right-3 z-10 bg-white border border-zinc-200 rounded-lg px-4 py-3 shadow-overlay flex items-start gap-3 animate-fade-in">
+          <span
+            className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: selectedNode.color }}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-zinc-900">
+              {selectedNode.name}
+              <span className="ml-2 font-normal text-[11px] text-zinc-400">{selectedNode.type}</span>
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500 line-clamp-3">
+              {selectedNode.desc || 'No additional description.'}
+            </p>
           </div>
-          <button onClick={() => setSelectedNode(null)}
-            className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 border border-slate-200 transition-colors shrink-0">
-            Close
+          <button onClick={closeDetail} className="btn-ghost btn-sm shrink-0" aria-label="Close">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

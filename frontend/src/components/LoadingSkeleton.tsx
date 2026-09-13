@@ -1,48 +1,33 @@
-interface SkeletonProps {
-  className?: string;
+export function SkeletonLine({ className = '' }: { className?: string }) {
+  return <div className={`skeleton h-3 ${className}`} />;
 }
 
-export function SkeletonLine({ className = '' }: SkeletonProps) {
-  return <div className={`skeleton h-4 rounded ${className}`} />;
-}
-
-export function SkeletonCard({ className = '' }: SkeletonProps) {
+/** Matches the dashboard's 4-up stat row. */
+export function SkeletonStatRow({ count = 4 }: { count?: number }) {
   return (
-    <div className={`card p-5 space-y-3 ${className}`}>
-      <div className="flex items-center gap-3">
-        <div className="skeleton w-10 h-10 rounded-xl" />
-        <div className="flex-1 space-y-2">
-          <div className="skeleton h-3 w-24 rounded" />
-          <div className="skeleton h-2.5 w-16 rounded" />
-        </div>
-      </div>
-      <div className="skeleton h-8 w-20 rounded" />
-      <div className="skeleton h-2.5 w-32 rounded" />
-    </div>
-  );
-}
-
-export function SkeletonStatRow({ count = 3 }: { count?: number }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 border-y border-zinc-100">
       {Array.from({ length: count }).map((_, i) => (
-        <SkeletonCard key={i} />
+        <div key={i} className="py-5 pr-5 border-b lg:border-b-0 border-zinc-100 space-y-2.5">
+          <div className="skeleton h-6 w-14" />
+          <div className="skeleton h-2.5 w-24" />
+        </div>
       ))}
     </div>
   );
 }
 
+/** Matches the seamless hairline-divided list rows. */
 export function SkeletonList({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-2">
+    <div className="list border-t border-zinc-100">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="card p-4 flex items-center gap-3">
-          <div className="skeleton w-3 h-3 rounded-full" />
-          <div className="flex-1 space-y-1.5">
-            <div className="skeleton h-3 w-48 rounded" />
-            <div className="skeleton h-2.5 w-32 rounded" />
+        <div key={i} className="list-row">
+          <div className="skeleton w-1.5 h-1.5 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-3 w-48" />
+            <div className="skeleton h-2.5 w-28" />
           </div>
-          <div className="skeleton h-5 w-16 rounded-md" />
+          <div className="skeleton h-3 w-12" />
         </div>
       ))}
     </div>
@@ -51,16 +36,13 @@ export function SkeletonList({ rows = 4 }: { rows?: number }) {
 
 export function SkeletonChat({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="space-y-4">
-      {Array.from({ length: rows }).map((_, i) => {
-        const isUser = i % 2 === 1;
-        return (
-          <div key={i} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-            <div className="skeleton w-8 h-8 rounded-xl shrink-0" />
-            <div className={`skeleton rounded-2xl ${isUser ? 'w-2/5 h-12' : 'w-3/5 h-16'}`} />
-          </div>
-        );
-      })}
+    <div className="space-y-6">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="skeleton h-2.5 w-16" />
+          <div className={`skeleton h-3 ${i % 2 ? 'w-2/5' : 'w-3/5'}`} />
+        </div>
+      ))}
     </div>
   );
 }

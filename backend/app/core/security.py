@@ -94,14 +94,22 @@ async def get_current_user_token(credentials: Optional[HTTPAuthorizationCredenti
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Autentikasi diperlukan. Silakan login terlebih dahulu.",
+            detail="Authentication required.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     payload = decode_access_token(credentials.credentials)
     if not payload or not payload.get("sub"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token tidak valid atau telah kedaluwarsa.",
+            detail="Invalid or expired token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
+
+
+async def require_user(payload: Dict[str, Any] = Depends(get_current_user_token)) -> str:
+    """Every data endpoint depends on this. Returns the caller's user id.
+
+    Without it a route is public: the login screen only gates the UI, never the API.
+    """
+    return str(payload["sub"])

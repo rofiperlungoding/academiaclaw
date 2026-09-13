@@ -80,17 +80,29 @@ This repository is configured with a GitHub Actions workflow (`.github/workflows
 
 ### Required GitHub Repository Secrets
 
-Configure the following secrets in **GitHub Repo > Settings > Secrets and variables > Actions**:
+Configure these in **GitHub Repo > Settings > Secrets and variables > Actions**.
+Never commit real values to this file — a public repository exposes them permanently,
+including in Git history.
 
-| Secret Name | Value | Description |
-|---|---|---|
-| `VPS_HOST` | `103.30.146.109` | IP Address of the VPS |
-| `VPS_PORT` | `4422` | SSH Port |
-| `VPS_USER` | `root` | SSH User |
-| `VPS_PASSWORD` | `EVwkQgSX8h05QJL` | VPS Root Password |
-| `VPS_SSH_KEY` | *(Optional)* | Private SSH Key if configured |
+| Secret Name | Description |
+|---|---|
+| `VPS_HOST` | VPS IP address |
+| `VPS_PORT` | SSH port |
+| `VPS_USER` | SSH user |
+| `VPS_SSH_KEY` | Private SSH key. Prefer this over a password. |
 
----
+### Runtime Environment
+
+The backend reads secrets from the environment, never from source. Copy
+`.env.example` to `.env` and fill it in:
+
+```bash
+cp .env.example .env
+python -c "import secrets; print(secrets.token_urlsafe(48))"   # JWT_SECRET
+```
+
+`JWT_SECRET` signs login tokens. With `DEBUG=false` the server refuses to start
+without it, since an empty signing key lets anyone forge a session for any user.
 
 ## 📦 Project Structure
 

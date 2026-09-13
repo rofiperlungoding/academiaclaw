@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Settings2, Trash2 } from 'lucide-react';
+import { ArrowUp, Loader2, Trash2 } from 'lucide-react';
 import type { GatewayStatus, ModelItem } from '../../types';
 import { api } from '../../api';
 
@@ -7,9 +7,16 @@ interface Message {
   id: string;
   sender: 'user' | 'agent' | 'system';
   text: string;
-  timestamp: string;
   model?: string;
 }
+
+const CONTEXT_MODES = [
+  { value: 'academic_tutor', label: 'Academic tutor' },
+  { value: 'exam_crammer', label: 'Active recall crammer' },
+  { value: 'raw', label: 'Raw (no system context)' },
+];
+
+const newId = () => Math.random().toString(36).slice(2);
 
 export function AgentPage() {
   const [gateway, setGateway] = useState<GatewayStatus | null>(null);
@@ -17,12 +24,7 @@ export function AgentPage() {
   const [selectedModel, setSelectedModel] = useState('');
   const [contextMode, setContextMode] = useState('academic_tutor');
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'init',
-      sender: 'system',
-      text: 'OpenClaw Agent Terminal initialized. Direct gateway stream connected to port 18789.',
-      timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-    },
+    { id: 'init', sender: 'system', text: 'Terminal ready. Gateway stream on port 18789.' },
   ]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -32,208 +34,146 @@ export function AgentPage() {
     Promise.allSettled([api.getGatewayStatus(), api.getModels()]).then(([g, m]) => {
       if (g.status === 'fulfilled') {
         setGateway(g.value);
-        setSelectedModel(g.value.active_model || '9router/oc/hy3-free');
+        setSelectedModel(g.value.active_model || '');
       }
-      if (m.status === 'fulfilled') {
-        setModels(m.value);
-      }
+      if (m.status === 'fulfilled') setModels(m.value);
     });
   }, []);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, isSending]);
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isSending) return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: 'user',
-        text,
-        timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
+    const body = text.trim();
+    if (!body || isSending) return;
+
+    setMessages((prev) => [...prev, { id: newId(), sender: 'user', text: body }]);
     setInput('');
     setIsSending(true);
 
     try {
-      const res = await api.chatWithAgent(text, 'admin_console', selectedModel, contextMode);
+      const res = await api.chatWithAgent(body, 'admin_console', selectedModel, contextMode);
       setMessages((prev) => [
         ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: 'agent',
-          text: res.reply,
-          model: res.model,
-          timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        },
+        { id: newId(), sender: 'agent', text: res.reply, model: res.model },
       ]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: 'system',
-          text: 'Error contacting OpenClaw Gateway. Check connection status.',
-          timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        },
+        { id: newId(), sender: 'system', text: 'Could not reach the OpenClaw Gateway.' },
       ]);
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleClear = () => {
-    setMessages([
-      {
-        id: 'init',
-        sender: 'system',
-        text: 'Terminal session cleared.',
-        timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
-  };
-
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="animate-fade-in">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>OpenClaw Agent Terminal</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200">
-              Raw Console
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Interaksi langsung dengan runtime agent OpenClaw menggunakan token otorisasi gateway.
-          </p>
+          <h1 className="page-title">Agent</h1>
+          <p className="mt-1 muted">Direct console into the OpenClaw runtime.</p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={contextMode}
             onChange={(e) => setContextMode(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-brand-400 font-mono shadow-2xs"
+            className="input-field w-auto"
+            aria-label="Context mode"
           >
-            <option value="academic_tutor">Mode: Academic Tutor</option>
-            <option value="exam_crammer">Mode: Active Recall Crammer</option>
-            <option value="raw">Mode: Raw (No System Context)</option>
+            {CONTEXT_MODES.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
           </select>
-
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-white border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-brand-400 font-mono shadow-2xs"
+            className="input-field w-auto max-w-[200px]"
+            aria-label="Model"
           >
             {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
+              <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
-
           <button
-            onClick={handleClear}
-            className="text-xs text-slate-400 hover:text-slate-600 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
-            title="Clear Console"
+            onClick={() =>
+              setMessages([{ id: 'init', sender: 'system', text: 'Terminal session cleared.' }])
+            }
+            className="btn-ghost btn-sm"
+            title="Clear console"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
+      </header>
+
+      <div className="mt-6 flex items-center gap-3 pb-3 border-b border-zinc-100 text-[11px] text-zinc-400">
+        <span>session admin_console</span>
+        <span className="text-zinc-700">{selectedModel.split('/').pop() || '—'}</span>
+        <span className="ml-auto flex items-center gap-1.5">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              gateway?.gateway_reachable ? 'bg-emerald-500' : 'bg-zinc-300'
+            }`}
+          />
+          {gateway?.gateway_reachable ? 'online' : 'standby'}
+        </span>
       </div>
 
-      <div className="flex flex-col h-[calc(100vh-14rem)] bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
-        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-600 font-mono">
-            <Settings2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>session: admin_console</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-brand-600 font-semibold">{selectedModel.split('/').pop()}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${gateway?.gateway_reachable ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-            <span className="text-[11px] font-medium text-slate-600 font-mono">
-              {gateway?.gateway_reachable ? 'Gateway Online' : 'Gateway Standby'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/40 font-mono text-xs">
-          {messages.map((msg) => {
-            if (msg.sender === 'system') {
-              return (
-                <div key={msg.id} className="text-center my-1.5">
-                  <span className="text-[11px] text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-1 shadow-2xs">
-                    {msg.text}
-                  </span>
-                </div>
-              );
-            }
-
-            const isUser = msg.sender === 'user';
-            return (
-              <div key={msg.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
-                  isUser ? 'bg-brand-600 text-white' : 'bg-slate-900 text-white'
-                }`}>
-                  {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
-                </div>
-
-                <div className={`max-w-[85%] px-4 py-3 rounded-xl leading-relaxed ${
-                  isUser
-                    ? 'bg-brand-600 text-white rounded-tr-xs shadow-xs'
-                    : 'bg-white border border-slate-200/90 text-slate-800 rounded-tl-xs shadow-card whitespace-pre-wrap'
-                }`}>
-                  <p>{msg.text}</p>
-                  <div className={`flex items-center justify-between gap-4 mt-2 pt-1 border-t text-[10px] ${
-                    isUser ? 'border-brand-500 text-brand-200' : 'border-slate-100 text-slate-400'
-                  }`}>
-                    <span>{msg.model || (isUser ? 'client' : 'openclaw')}</span>
-                    <span>{msg.timestamp}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {isSending && (
-            <div className="flex gap-3">
-              <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <Bot className="w-3.5 h-3.5" />
-              </div>
-              <div className="bg-white border border-slate-200/90 rounded-xl rounded-tl-xs px-4 py-3 shadow-card flex items-center gap-2 text-xs text-slate-500">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" />
-                <span>Streaming response from OpenClaw agent backend...</span>
-              </div>
+      <div className="h-[calc(100vh-20rem)] min-h-[320px] overflow-y-auto py-5 space-y-5">
+        {messages.map((msg) =>
+          msg.sender === 'system' ? (
+            <p key={msg.id} className="text-[13px] text-zinc-400">{msg.text}</p>
+          ) : (
+            <div key={msg.id} className="animate-fade-in">
+              <p className="eyebrow mb-1.5">
+                {msg.sender === 'user' ? 'admin' : msg.model || 'openclaw'}
+              </p>
+              <p
+                className={`text-[13px] leading-relaxed whitespace-pre-wrap max-w-prose ${
+                  msg.sender === 'user' ? 'font-medium text-zinc-900' : 'text-zinc-700'
+                }`}
+              >
+                {msg.text}
+              </p>
             </div>
-          )}
+          )
+        )}
 
-          <div ref={endRef} />
-        </div>
+        {isSending && (
+          <div className="flex items-center gap-2 text-[13px] text-zinc-400">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Waiting for the agent…
+          </div>
+        )}
 
-        <div className="p-3 bg-white border-t border-slate-200/80">
-          <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Kirim perintah atau query ke agent..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50 font-mono"
-            />
-            <button
-              type="submit"
-              disabled={isSending || !input.trim()}
-              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Exec</span>
-            </button>
-          </form>
-        </div>
+        <div ref={endRef} />
       </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          sendMessage(input);
+        }}
+        className="flex gap-2 pt-3 border-t border-zinc-100"
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Send a command to the agent…"
+          className="input-field flex-1"
+          aria-label="Agent command"
+        />
+        <button
+          type="submit"
+          disabled={isSending || !input.trim()}
+          className="btn-primary w-9 px-0 shrink-0"
+          aria-label="Send"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      </form>
     </div>
   );
 }

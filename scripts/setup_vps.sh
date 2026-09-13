@@ -30,6 +30,9 @@ Type=simple
 User=root
 WorkingDirectory=/opt/academiaclaw
 Environment="PYTHONPATH=/opt/academiaclaw"
+# Secrets live here, never in the repo. Missing file is fatal on purpose:
+# starting without JWT_SECRET would sign tokens with an empty key.
+EnvironmentFile=/opt/academiaclaw/.env
 ExecStart=/opt/academiaclaw/.venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
@@ -41,6 +44,14 @@ EOF
 systemctl daemon-reload
 systemctl enable academiaclaw.service
 systemctl restart academiaclaw.service
+
+echo "=== [4b/6] Checking Secrets ==="
+if [ ! -f /opt/academiaclaw/.env ]; then
+    cp /opt/academiaclaw/.env.example /opt/academiaclaw/.env
+    chmod 600 /opt/academiaclaw/.env
+    echo "  created /opt/academiaclaw/.env from template — FILL IT IN, then:"
+    echo "    systemctl restart academiaclaw"
+fi
 
 echo "=== [5/6] Syncing OpenClaw Config ==="
 if [ -d "/opt/academiaclaw/openclaw_config" ]; then

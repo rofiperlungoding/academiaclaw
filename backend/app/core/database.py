@@ -14,9 +14,9 @@ async def init_db():
             nim TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             email TEXT DEFAULT '',
-            faculty TEXT DEFAULT 'Fakultas Ilmu Komputer',
-            program TEXT DEFAULT 'Teknik Komputer',
-            university TEXT DEFAULT 'Universitas Brawijaya',
+            faculty TEXT DEFAULT '',
+            program TEXT DEFAULT '',
+            university TEXT DEFAULT '',
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -25,6 +25,7 @@ async def init_db():
         await db.execute("""
         CREATE TABLE IF NOT EXISTS documents (
             id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL DEFAULT '',
             title TEXT NOT NULL,
             filename TEXT NOT NULL,
             file_path TEXT NOT NULL,
@@ -76,6 +77,7 @@ async def init_db():
         await db.execute("""
         CREATE TABLE IF NOT EXISTS flashcards (
             id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL DEFAULT '',
             doc_id TEXT,
             topic_id TEXT,
             question TEXT NOT NULL,
@@ -112,6 +114,7 @@ async def init_db():
         await db.execute("""
         CREATE TABLE IF NOT EXISTS academic_tasks (
             id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL DEFAULT '',
             title TEXT NOT NULL,
             course TEXT NOT NULL,
             task_type TEXT NOT NULL,
@@ -124,7 +127,61 @@ async def init_db():
         )
         """)
 
+        # Proactive notifications the agent has already pushed. The digest hash lets
+        # the agent skip a run when nothing changed, so a 30-minute cron does not spam.
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL DEFAULT '',
+            digest_hash TEXT NOT NULL,
+            channel TEXT NOT NULL DEFAULT 'whatsapp',
+            body TEXT NOT NULL,
+            urgent_tasks_count INTEGER NOT NULL DEFAULT 0,
+            due_flashcards_count INTEGER NOT NULL DEFAULT 0,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notifications_sent_at ON notifications (sent_at DESC)"
+        )
+
+        await _migrate_user_scoping(db)
+
         await db.commit()
-    
+
     from backend.app.core.seed import seed_data
     await seed_data()
+
+
+OWNED_TABLES = ("documents", "flashcards", "academic_tasks", "notifications")
+
+
+async def _migrate_user_scoping(db) -> None:
+    """Add user_id to databases created before per-user scoping existed.
+
+    CREATE TABLE IF NOT EXISTS never alters an existing table, so a database from
+    an earlier version keeps the old shape and every scoped query silently returns
+    nothing. Add the column, then adopt orphan rows into the oldest account so
+    existing demo data does not vanish.
+    """
+    for table in OWNED_TABLES:
+        cur = await db.execute(f"PRAGMA table_info({table})")
+        columns = {row[1] for row in await cur.fetchall()}
+        if "user_id" not in columns:
+            await db.execute(f"ALTER TABLE {table} ADD COLUMN user_id TEXT NOT NULL DEFAULT ''")
+            print(f"[db] migrated {table}: added user_id")
+        await db.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_user ON {table} (user_id)")
+
+    cur = await db.execute("SELECT id FROM users ORDER BY created_at ASC LIMIT 1")
+    row = await cur.fetchone()
+    if row is None:
+        return
+
+    owner = row[0]
+    for table in OWNED_TABLES:
+        cur = await db.execute(f"SELECT COUNT(*) FROM {table} WHERE user_id = ''")
+        orphans = (await cur.fetchone())[0]
+        if orphans:
+            await db.execute(f"UPDATE {table} SET user_id = ? WHERE user_id = ''", (owner,))
+            print(f"[db] adopted {orphans} orphan row(s) in {table}")

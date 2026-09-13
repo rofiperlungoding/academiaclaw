@@ -1,33 +1,35 @@
 import { useEffect, useState } from 'react';
-import { Plus, Check, Circle, Clock, X, Search, Filter, Trash2, Calendar } from 'lucide-react';
+import { Plus, Check, Circle, Trash2, Search, X } from 'lucide-react';
 import type { AcademicTask } from '../../types';
 import { api } from '../../api';
 
-const COURSE_PRESETS = [
-  'Algoritma dan Struktur Data',
-  'Sistem Basis Data',
-  'Rangkaian Elektronika Lanjut',
-  'Arsitektur dan Organisasi Komputer',
-  'Kewirausahaan'
+const TASK_TYPES = ['Assignment', 'Lab', 'Quiz', 'Report', 'Exam'];
+const PRIORITIES = [
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
 ];
+
+const daysUntil = (deadline: string) =>
+  Math.ceil((new Date(deadline).getTime() - Date.now()) / 86_400_000);
 
 export function SchedulePage() {
   const [tasks, setTasks] = useState<AcademicTask[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('all');
-  
+  const [selectedCourse, setSelectedCourse] = useState('all');
+  const [formError, setFormError] = useState('');
+
   const [title, setTitle] = useState('');
   const [course, setCourse] = useState('');
-  const [taskType, setTaskType] = useState('Tugas');
+  const [taskType, setTaskType] = useState('Assignment');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState('medium');
   const [notes, setNotes] = useState('');
 
   const fetchTasks = async () => {
     try {
-      const data = await api.getTasks();
-      setTasks(data);
+      setTasks(await api.getTasks());
     } catch {
       setTasks([]);
     }
@@ -37,353 +39,305 @@ export function SchedulePage() {
     fetchTasks();
   }, []);
 
-  const handleToggle = async (task: AcademicTask) => {
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+  useEffect(() => {
+    if (!showAdd) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setShowAdd(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAdd]);
+
+  const toggle = async (task: AcademicTask) => {
     try {
-      await api.updateTask(task.id, { status: newStatus });
+      await api.updateTask(task.id, {
+        status: task.status === 'completed' ? 'pending' : 'completed',
+      });
       fetchTasks();
     } catch {
-      alert('Gagal memperbarui status tugas.');
+      /* server rejected; list stays as-is */
     }
   };
 
-  const handleDelete = async (taskId: string) => {
-    if (!confirm('Hapus agenda ini?')) return;
+  const remove = async (taskId: string) => {
+    if (!confirm('Delete this item?')) return;
     try {
       await api.deleteTask(taskId);
       fetchTasks();
     } catch {
-      alert('Gagal menghapus tugas.');
+      /* keep list */
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !course.trim() || !deadline) return;
+    if (!title.trim() || !course.trim() || !deadline) {
+      return setFormError('Title, course, and deadline are required.');
+    }
     try {
       await api.createTask({
-        title,
-        course,
+        title: title.trim(),
+        course: course.trim(),
         task_type: taskType,
         deadline: new Date(deadline).toISOString(),
         priority,
-        notes,
+        notes: notes.trim(),
       });
       setTitle('');
       setCourse('');
       setDeadline('');
       setNotes('');
+      setFormError('');
       setShowAdd(false);
       fetchTasks();
     } catch {
-      alert('Gagal menambahkan agenda.');
+      setFormError('Could not add the item.');
     }
   };
 
-  const now = new Date();
-  const categorize = (task: AcademicTask) => {
-    if (task.status === 'completed') return 'done';
-    const diff = Math.ceil((new Date(task.deadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diff <= 1) return 'today';
-    if (diff <= 7) return 'week';
+  // Course list comes from the user's own tasks, so this works for any campus.
+  const courses = Array.from(new Set(tasks.map((t) => t.course).filter(Boolean)));
+
+  const q = search.toLowerCase();
+  const filtered = tasks.filter(
+    (t) =>
+      (t.title.toLowerCase().includes(q) || t.course.toLowerCase().includes(q)) &&
+      (selectedCourse === 'all' || t.course === selectedCourse)
+  );
+
+  const bucket = (t: AcademicTask) => {
+    if (t.status === 'completed') return 'done';
+    const d = daysUntil(t.deadline);
+    if (d <= 1) return 'today';
+    if (d <= 7) return 'week';
     return 'later';
   };
 
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.course.toLowerCase().includes(search.toLowerCase());
-    const matchesCourse = selectedCourse === 'all' || t.course === selectedCourse;
-    return matchesSearch && matchesCourse;
-  });
-
-  const coursesList = Array.from(new Set(tasks.map((t) => t.course).filter(Boolean)));
-
   const groups = [
-    { key: 'today', label: 'Hari Ini & Mendesak', items: filteredTasks.filter((t) => categorize(t) === 'today') },
-    { key: 'week', label: 'Minggu Ini', items: filteredTasks.filter((t) => categorize(t) === 'week') },
-    { key: 'later', label: 'Mendatang', items: filteredTasks.filter((t) => categorize(t) === 'later') },
-    { key: 'done', label: 'Selesai', items: filteredTasks.filter((t) => categorize(t) === 'done') },
-  ];
+    { key: 'today', label: 'Urgent' },
+    { key: 'week', label: 'This week' },
+    { key: 'later', label: 'Upcoming' },
+    { key: 'done', label: 'Done' },
+  ].map((g) => ({ ...g, items: filtered.filter((t) => bucket(t) === g.key) }));
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="animate-fade-in">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="page-title">
-            Jadwal & Deadline Kuliah
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manajemen agenda tugas, kuis, dan praktikum terintegrasi dengan proactive heartbeat.
-          </p>
+          <h1 className="page-title">Schedule</h1>
+          <p className="mt-1 muted">Watched by the OpenClaw heartbeat.</p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="btn-primary text-xs px-4 py-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Agenda</span>
+        <button onClick={() => setShowAdd(true)} className="btn-primary btn-sm">
+          <Plus className="w-3.5 h-3.5" />
+          Add item
         </button>
-      </div>
+      </header>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="mt-6 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
-            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari tugas atau mata kuliah..."
-            className="input-field pl-9"
+            placeholder="Search tasks or courses…"
+            className="input-field pl-8"
+            aria-label="Search items"
           />
         </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-          <select
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="input-field w-auto"
-          >
-            <option value="all">Semua Mata Kuliah</option>
-            {coursesList.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={selectedCourse}
+          onChange={(e) => setSelectedCourse(e.target.value)}
+          className="input-field sm:w-52"
+          aria-label="Filter by course"
+        >
+          <option value="all">All courses</option>
+          {courses.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="space-y-6">
-        {groups.map((group) => {
-          if (group.items.length === 0) return null;
-          return (
-            <div key={group.key} className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {group.label}
-                </h3>
-                <span className="text-[11px] font-mono text-slate-400">
-                  {group.items.length} item
-                </span>
-              </div>
+      {filtered.length === 0 ? (
+        <div className="mt-10 py-12 text-center border-t border-zinc-100">
+          <p className="text-[13px] text-zinc-500">No items found.</p>
+          <button onClick={() => setShowAdd(true)} className="btn-secondary btn-sm mt-4">
+            <Plus className="w-3 h-3" /> Add item
+          </button>
+        </div>
+      ) : (
+        <div className="mt-8 space-y-9">
+          {groups.map(
+            (group) =>
+              group.items.length > 0 && (
+                <section key={group.key}>
+                  <div className="flex items-baseline justify-between">
+                    <h2 className="section-title">{group.label}</h2>
+                    <span className="text-xs text-zinc-400">{group.items.length}</span>
+                  </div>
 
-              <div className="space-y-2">
-                {group.items.map((task) => {
-                  const isCompleted = task.status === 'completed';
-                  const dlDate = new Date(task.deadline);
-                  const diffDays = Math.ceil((dlDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                  <div className="mt-2 list border-t border-zinc-100">
+                    {group.items.map((task) => {
+                      const done = task.status === 'completed';
+                      const d = daysUntil(task.deadline);
+                      const tone =
+                        d <= 1 ? 'text-red-600' : d <= 3 ? 'text-amber-600' : 'text-zinc-400';
 
-                  return (
-                    <div
-                      key={task.id}
-                      className={`flex items-start sm:items-center gap-3.5 px-4 py-3.5 rounded-xl border transition-all duration-200 ${
-                        isCompleted
-                          ? 'bg-slate-50/80 border-slate-100 opacity-60'
-                          : 'card-interactive'
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleToggle(task)}
-                        className={`mt-0.5 sm:mt-0 shrink-0 transition-colors ${
-                          isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-500'
-                        }`}
-                      >
-                        {isCompleted ? <Check className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
-                      </button>
+                      return (
+                        <div key={task.id} className="list-row group">
+                          <button
+                            onClick={() => toggle(task)}
+                            className={`shrink-0 ${
+                              done ? 'text-emerald-600' : 'text-zinc-300 hover:text-zinc-600'
+                            }`}
+                            aria-label={done ? 'Mark as not done' : 'Mark as done'}
+                          >
+                            {done ? <Check className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                          </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium truncate ${
-                            isCompleted ? 'line-through text-slate-400' : 'text-slate-900'
-                          }`}>
-                            {task.title}
-                          </p>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                            task.priority === 'high' ? 'text-red-700 bg-red-50 border border-red-100' :
-                            task.priority === 'medium' ? 'text-amber-700 bg-amber-50 border border-amber-100' :
-                            'text-slate-600 bg-slate-100'
-                          }`}>
-                            {task.priority}
-                          </span>
-                        </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-[13px] font-medium truncate ${
+                                done ? 'line-through text-zinc-400' : 'text-zinc-900'
+                              }`}
+                            >
+                              {task.title}
+                            </p>
+                            <p className="mt-0.5 text-xs text-zinc-400 truncate">
+                              {task.course} · {task.task_type}
+                              {task.priority === 'high' && !done && ' · high priority'}
+                              {task.notes ? ` · ${task.notes}` : ''}
+                            </p>
+                          </div>
 
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[11px] font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">
-                            {task.course}
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            {task.task_type}
-                          </span>
-                          {task.notes && (
-                            <span className="text-[11px] text-slate-400 truncate max-w-xs hidden md:inline">
-                              &middot; {task.notes}
+                          {!done && (
+                            <span className={`text-xs shrink-0 ${tone}`}>
+                              {d <= 0 ? 'Today' : `${d}d`}
                             </span>
                           )}
+
+                          <button
+                            onClick={() => remove(task.id)}
+                            className="shrink-0 text-zinc-200 hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                            aria-label="Delete item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        {!isCompleted && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span className={
-                              diffDays <= 1 ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded' :
-                              diffDays <= 3 ? 'text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded' :
-                              'text-slate-600 bg-slate-50 px-2 py-0.5 rounded'
-                            }>
-                              {diffDays <= 0 ? 'Hari ini' : `${diffDays}d`}
-                            </span>
-                          </div>
-                        )}
-
-                        <button
-                          onClick={() => handleDelete(task.id)}
-                          className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                          title="Hapus task"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-
-        {filteredTasks.length === 0 && (
-          <div className="card p-12 text-center">
-            <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-slate-700">Tidak ada agenda ditemukan</p>
-            <p className="text-xs text-slate-400 mt-1 mb-4">
-              Coba sesuaikan kata kunci pencarian atau filter mata kuliah.
-            </p>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="btn-primary text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tambah Agenda Baru</span>
-            </button>
-          </div>
-        )}
-      </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )
+          )}
+        </div>
+      )}
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-lg shadow-elevated animate-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900">Tambah Agenda Kuliah</h3>
-                <p className="text-xs text-slate-400">Jadwal akan dimonitor oleh OpenClaw Heartbeat.</p>
-              </div>
-              <button onClick={() => setShowAdd(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <X className="w-5 h-5" />
+        <div
+          className="fixed inset-0 z-50 bg-zinc-900/20 flex items-center justify-center p-4"
+          onClick={() => setShowAdd(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add item"
+            className="w-full max-w-md bg-white border border-zinc-200 rounded-xl shadow-overlay animate-pop-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 h-14 border-b border-zinc-100">
+              <h2 className="text-sm font-semibold text-zinc-900">Add item</h2>
+              <button onClick={() => setShowAdd(false)} className="btn-ghost btn-sm" aria-label="Close">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={create} className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">Nama Tugas / Aktivitas</label>
+                <label className="label" htmlFor="t-title">Task name</label>
                 <input
-                  type="text"
+                  id="t-title"
+                  className="input-field"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Praktikum AVL Tree & Graph ADT"
-                  className="input-field"
-                  required
+                  placeholder="Lab report, chapter 3"
+                  autoFocus
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">Mata Kuliah</label>
+                <label className="label" htmlFor="t-course">Course</label>
                 <input
-                  type="text"
+                  id="t-course"
+                  className="input-field"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
-                  placeholder="Algoritma dan Struktur Data"
-                  className="input-field mb-1.5"
-                  required
+                  placeholder="Data Structures and Algorithms"
+                  list="course-presets"
                 />
-                <div className="flex flex-wrap gap-1">
-                  {COURSE_PRESETS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setCourse(p)}
-                      className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                    >
-                      {p}
-                    </button>
+                <datalist id="course-presets">
+                  {courses.map((c) => (
+                    <option key={c} value={c} />
                   ))}
-                </div>
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-700 block mb-1">Jenis Agenda</label>
+                  <label className="label" htmlFor="t-type">Type</label>
                   <select
+                    id="t-type"
+                    className="input-field"
                     value={taskType}
                     onChange={(e) => setTaskType(e.target.value)}
-                    className="input-field"
                   >
-                    <option value="Tugas">Tugas</option>
-                    <option value="Praktikum">Praktikum</option>
-                    <option value="Kuis">Kuis</option>
-                    <option value="Laporan">Laporan</option>
-                    <option value="Ujian">Ujian (UTS/UAS)</option>
+                    {TASK_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="text-xs font-medium text-slate-700 block mb-1">Prioritas</label>
+                  <label className="label" htmlFor="t-priority">Priority</label>
                   <select
+                    id="t-priority"
+                    className="input-field"
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-50"
                   >
-                    <option value="high">Tinggi (High)</option>
-                    <option value="medium">Sedang (Medium)</option>
-                    <option value="low">Rendah (Low)</option>
+                    {PRIORITIES.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">Tenggat Waktu (Deadline)</label>
+                <label className="label" htmlFor="t-deadline">Deadline</label>
                 <input
+                  id="t-deadline"
                   type="datetime-local"
+                  className="input-field"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className="input-field"
-                  required
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">Catatan Tambahan</label>
+                <label className="label" htmlFor="t-notes">Notes</label>
                 <textarea
+                  id="t-notes"
                   rows={2}
+                  className="input-field"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Kriteria penilaian, format file, atau instruksi dosen..."
-                  className="input-field"
+                  placeholder="File format, grading criteria…"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdd(false)}
-                  className="btn-secondary text-xs"
-                >
-                  Batal
+              {formError && <p role="alert" className="text-[13px] text-red-600">{formError}</p>}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setShowAdd(false)} className="btn-secondary">
+                  Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="btn-primary text-xs"
-                >
-                  Simpan Agenda
-                </button>
+                <button type="submit" className="btn-primary">Save</button>
               </div>
             </form>
           </div>
